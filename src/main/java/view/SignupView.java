@@ -33,6 +33,9 @@ public class SignupView extends JPanel implements ActionListener, PropertyChange
         this.signupViewModel = signupViewModel;
         signupViewModel.addPropertyChangeListener(this);
 
+        final JLabel appName = new JLabel("LET THEM COOK");
+        appName.setAlignmentX(Component.CENTER_ALIGNMENT);
+
         final JLabel title = new JLabel(SignupViewModel.TITLE_LABEL);
         title.setAlignmentX(Component.CENTER_ALIGNMENT);
 
@@ -84,6 +87,7 @@ public class SignupView extends JPanel implements ActionListener, PropertyChange
 
         this.setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
 
+        this.add(appName);
         this.add(title);
         this.add(usernameInfo);
         this.add(passwordInfo);

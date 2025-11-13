@@ -36,6 +36,9 @@ public class LoginView extends JPanel implements ActionListener, PropertyChangeL
         this.loginViewModel = loginViewModel;
         this.loginViewModel.addPropertyChangeListener(this);
 
+        final JLabel appName = new JLabel("LET THEM COOK");
+        appName.setAlignmentX(Component.CENTER_ALIGNMENT);
+
         final JLabel title = new JLabel("Login Screen");
         title.setAlignmentX(Component.CENTER_ALIGNMENT);
 
@@ -117,6 +120,7 @@ public class LoginView extends JPanel implements ActionListener, PropertyChangeL
             }
         });
 
+        this.add(appName);
         this.add(title);
         this.add(usernameInfo);
         this.add(usernameErrorField);
