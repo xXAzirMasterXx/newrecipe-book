@@ -3,8 +3,12 @@ package view;
 import interface_adapter.logged_in.ChangePasswordController;
 import interface_adapter.logged_in.LoggedInState;
 import interface_adapter.logged_in.LoggedInViewModel;
-import interface_adapter.login.LoginController;
 import interface_adapter.logout.LogoutController;
+
+// Recipe-related imports
+import interface_adapter.recipe.RecipeController;
+import interface_adapter.recipe.RecipeViewModel;
+import entity.Recipe;
 
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
@@ -14,34 +18,66 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.util.List;
 
-/**
- * The View for when the user is logged into the program.
- */
+
 public class LoggedInView extends JPanel implements ActionListener, PropertyChangeListener {
 
     private final String viewName = "logged in";
     private final LoggedInViewModel loggedInViewModel;
+    private final RecipeViewModel recipeViewModel;
     private final JLabel passwordErrorField = new JLabel();
     private ChangePasswordController changePasswordController = null;
     private LogoutController logoutController;
+    private RecipeController recipeController;
 
     private final JLabel username;
 
-    private final JButton logOut;
+    // Recipe components
+    private final JTextField searchField = new JTextField(20);
+    private final JButton searchButton = new JButton("Search Recipes");
+    private final JButton randomButton = new JButton("Random Recipe");
+    private final JPanel resultsPanel = new JPanel();
+    private final JLabel statusLabel = new JLabel("Welcome! Search for recipes or get a random one.");
 
+    // Original components
+    private final JButton logOut;
     private final JTextField passwordInputField = new JTextField(15);
     private final JButton changePassword;
 
-    public LoggedInView(LoggedInViewModel loggedInViewModel) {
+    public LoggedInView(LoggedInViewModel loggedInViewModel, RecipeViewModel recipeViewModel, RecipeController recipeController) {
         this.loggedInViewModel = loggedInViewModel;
-        this.loggedInViewModel.addPropertyChangeListener(this);
+        this.recipeViewModel = recipeViewModel;
+        this.recipeController = recipeController;
 
-        final JLabel title = new JLabel("Logged In Screen");
+        this.loggedInViewModel.addPropertyChangeListener(this);
+        this.recipeViewModel.addPropertyChangeListener(this);
+
+        final JLabel title = new JLabel("Recipe Explorer");
         title.setAlignmentX(Component.CENTER_ALIGNMENT);
+        title.setFont(new Font("Arial", Font.BOLD, 18));
+
+        // Recipe Search Section
+        final JPanel searchPanel = new JPanel();
+        searchPanel.setBorder(BorderFactory.createTitledBorder("Recipe Search"));
+        searchPanel.add(new JLabel("Search:"));
+        searchPanel.add(searchField);
+        searchPanel.add(searchButton);
+        searchPanel.add(randomButton);
+
+        // Results Panel
+        resultsPanel.setLayout(new BoxLayout(resultsPanel, BoxLayout.Y_AXIS));
+        resultsPanel.setBorder(BorderFactory.createTitledBorder("Recipes"));
+        JScrollPane scrollPane = new JScrollPane(resultsPanel);
+        scrollPane.setPreferredSize(new Dimension(600, 300));
+
+        // User Management Section (original functionality)
+        final JPanel userPanel = new JPanel();
+        userPanel.setBorder(BorderFactory.createTitledBorder("Account Management"));
+        userPanel.setLayout(new BoxLayout(userPanel, BoxLayout.Y_AXIS));
 
         final LabelTextPanel passwordInfo = new LabelTextPanel(
-                new JLabel("Password"), passwordInputField);
+                new JLabel("New Password"), passwordInputField);
 
         final JLabel usernameInfo = new JLabel("Currently logged in: ");
         username = new JLabel();
@@ -53,12 +89,20 @@ public class LoggedInView extends JPanel implements ActionListener, PropertyChan
         changePassword = new JButton("Change Password");
         buttons.add(changePassword);
 
-        logOut.addActionListener(this);
+        // Add components to user panel
+        userPanel.add(usernameInfo);
+        userPanel.add(username);
+        userPanel.add(passwordInfo);
+        userPanel.add(passwordErrorField);
+        userPanel.add(buttons);
 
+        // Set up layout
         this.setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
 
-        passwordInputField.getDocument().addDocumentListener(new DocumentListener() {
+        // Set up listeners for original functionality
+        logOut.addActionListener(this);
 
+        passwordInputField.getDocument().addDocumentListener(new DocumentListener() {
             private void documentListenerHelper() {
                 final LoggedInState currentState = loggedInViewModel.getState();
                 currentState.setPassword(passwordInputField.getText());
@@ -82,26 +126,161 @@ public class LoggedInView extends JPanel implements ActionListener, PropertyChan
         });
 
         changePassword.addActionListener(
-                // This creates an anonymous subclass of ActionListener and instantiates it.
                 evt -> {
                     if (evt.getSource().equals(changePassword)) {
                         final LoggedInState currentState = loggedInViewModel.getState();
 
-                        this.changePasswordController.execute(
-                                currentState.getUsername(),
-                                currentState.getPassword()
-                        );
+                        if (this.changePasswordController != null) {
+                            this.changePasswordController.execute(
+                                    currentState.getUsername(),
+                                    currentState.getPassword()
+                            );
+                        }
                     }
                 }
         );
 
-        this.add(title);
-        this.add(usernameInfo);
-        this.add(username);
+        // Set up recipe search listeners
+        searchButton.addActionListener(evt -> performSearch());
+        randomButton.addActionListener(evt -> getRandomRecipe());
 
-        this.add(passwordInfo);
-        this.add(passwordErrorField);
-        this.add(buttons);
+        // Add all components to main panel
+        this.add(title);
+        this.add(Box.createRigidArea(new Dimension(0, 10))); // Spacer
+        this.add(searchPanel);
+        this.add(Box.createRigidArea(new Dimension(0, 10))); // Spacer
+        this.add(scrollPane);
+        this.add(Box.createRigidArea(new Dimension(0, 10))); // Spacer
+        this.add(statusLabel);
+        this.add(Box.createRigidArea(new Dimension(0, 10))); // Spacer
+        this.add(userPanel);
+    }
+
+    private void performSearch() {
+        String query = searchField.getText().trim();
+        if (!query.isEmpty()) {
+            recipeViewModel.setLoading(true);
+            statusLabel.setText("Searching for recipes...");
+
+            new Thread(() -> { // Run in background thread
+                try {
+                    List<Recipe> recipes = recipeController.searchRecipes(query);
+                    SwingUtilities.invokeLater(() -> {
+                        recipeViewModel.setRecipes(recipes);
+                        recipeViewModel.setLoading(false);
+                        statusLabel.setText("Found " + recipes.size() + " recipes");
+                    });
+                } catch (Exception e) {
+                    SwingUtilities.invokeLater(() -> {
+                        recipeViewModel.setErrorMessage("Search failed: " + e.getMessage());
+                        recipeViewModel.setLoading(false);
+                        statusLabel.setText("Search failed");
+                    });
+                }
+            }).start();
+        } else {
+            JOptionPane.showMessageDialog(this, "Please enter a search term", "Search Error", JOptionPane.WARNING_MESSAGE);
+        }
+    }
+
+    private void getRandomRecipe() {
+        recipeViewModel.setLoading(true);
+        statusLabel.setText("Getting random recipe...");
+
+        new Thread(() -> {
+            try {
+                var recipe = recipeController.getRandomRecipe();
+                SwingUtilities.invokeLater(() -> {
+                    if (recipe.isPresent()) {
+                        recipeViewModel.setRecipes(List.of(recipe.get()));
+                        statusLabel.setText("Found random recipe: " + recipe.get().getName());
+                    } else {
+                        recipeViewModel.setErrorMessage("No random recipe found");
+                        statusLabel.setText("No random recipe found");
+                    }
+                    recipeViewModel.setLoading(false);
+                });
+            } catch (Exception e) {
+                SwingUtilities.invokeLater(() -> {
+                    recipeViewModel.setErrorMessage("Failed to get random recipe: " + e.getMessage());
+                    recipeViewModel.setLoading(false);
+                    statusLabel.setText("Failed to get random recipe");
+                });
+            }
+        }).start();
+    }
+
+    private void displayRecipes(List<Recipe> recipes) {
+        resultsPanel.removeAll();
+        if (recipes.isEmpty()) {
+            resultsPanel.add(new JLabel("No recipes found. Try a different search term."));
+        } else {
+            for (Recipe recipe : recipes) {
+                resultsPanel.add(createRecipePanel(recipe));
+                resultsPanel.add(Box.createRigidArea(new Dimension(0, 5))); // Spacer between recipes
+            }
+        }
+        resultsPanel.revalidate();
+        resultsPanel.repaint();
+    }
+
+    private JPanel createRecipePanel(Recipe recipe) {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBorder(BorderFactory.createEtchedBorder());
+        panel.setBackground(Color.WHITE);
+
+        JLabel nameLabel = new JLabel(recipe.getName());
+        nameLabel.setFont(new Font("Arial", Font.BOLD, 14));
+
+        JTextArea detailsArea = new JTextArea(
+                "Category: " + recipe.getCategory() + "\n" +
+                        "Cuisine: " + recipe.getArea() + "\n" +
+                        "Ingredients: " + recipe.getIngredients().length + "\n" +
+                        "Instructions: " + (recipe.getInstructions().length() > 100 ?
+                        recipe.getInstructions().substring(0, 100) + "..." : recipe.getInstructions())
+        );
+        detailsArea.setEditable(false);
+        detailsArea.setBackground(Color.WHITE);
+        detailsArea.setLineWrap(true);
+        detailsArea.setWrapStyleWord(true);
+
+        panel.add(nameLabel, BorderLayout.NORTH);
+        panel.add(detailsArea, BorderLayout.CENTER);
+
+        // Add a view details button
+        JButton viewDetailsButton = new JButton("View Details");
+        viewDetailsButton.addActionListener(e -> showRecipeDetails(recipe));
+        panel.add(viewDetailsButton, BorderLayout.SOUTH);
+
+        return panel;
+    }
+
+    private void showRecipeDetails(Recipe recipe) {
+        StringBuilder details = new StringBuilder();
+        details.append("Name: ").append(recipe.getName()).append("\n\n");
+        details.append("Category: ").append(recipe.getCategory()).append("\n");
+        details.append("Cuisine: ").append(recipe.getArea()).append("\n\n");
+        details.append("Ingredients:\n");
+
+        String[] ingredients = recipe.getIngredients();
+        String[] measures = recipe.getMeasures();
+        for (int i = 0; i < ingredients.length; i++) {
+            if (ingredients[i] != null && !ingredients[i].isEmpty()) {
+                details.append("• ").append(measures[i]).append(" ").append(ingredients[i]).append("\n");
+            }
+        }
+
+        details.append("\nInstructions:\n").append(recipe.getInstructions());
+
+        JTextArea textArea = new JTextArea(details.toString());
+        textArea.setEditable(false);
+        textArea.setLineWrap(true);
+        textArea.setWrapStyleWord(true);
+
+        JScrollPane scrollPane = new JScrollPane(textArea);
+        scrollPane.setPreferredSize(new Dimension(500, 400));
+
+        JOptionPane.showMessageDialog(this, scrollPane, "Recipe Details: " + recipe.getName(), JOptionPane.INFORMATION_MESSAGE);
     }
 
     /**
@@ -110,10 +289,14 @@ public class LoggedInView extends JPanel implements ActionListener, PropertyChan
      */
     public void actionPerformed(ActionEvent evt) {
         System.out.println("Click " + evt.getActionCommand());
+        if (evt.getSource().equals(logOut) && logoutController != null) {
+            logoutController.execute();
+        }
     }
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
+        // Handle original LoggedInViewModel changes
         if (evt.getPropertyName().equals("state")) {
             final LoggedInState state = (LoggedInState) evt.getNewValue();
             username.setText(state.getUsername());
@@ -121,7 +304,7 @@ public class LoggedInView extends JPanel implements ActionListener, PropertyChan
         else if (evt.getPropertyName().equals("password")) {
             final LoggedInState state = (LoggedInState) evt.getNewValue();
             if (state.getPasswordError() == null) {
-                JOptionPane.showMessageDialog(this, "password updated for " + state.getUsername());
+                JOptionPane.showMessageDialog(this, "Password updated for " + state.getUsername());
                 passwordInputField.setText("");
             }
             else {
@@ -129,6 +312,26 @@ public class LoggedInView extends JPanel implements ActionListener, PropertyChan
             }
         }
 
+        // Handle RecipeViewModel changes
+        else if (evt.getSource() == recipeViewModel) {
+            switch (evt.getPropertyName()) {
+                case RecipeViewModel.RECIPES_PROPERTY:
+                    displayRecipes(recipeViewModel.getRecipes());
+                    break;
+                case RecipeViewModel.ERROR_PROPERTY:
+                    String error = recipeViewModel.getErrorMessage();
+                    if (error != null && !error.isEmpty()) {
+                        JOptionPane.showMessageDialog(this, error, "Recipe Error", JOptionPane.ERROR_MESSAGE);
+                        recipeViewModel.setErrorMessage(null); // Clear error after displaying
+                    }
+                    break;
+                case RecipeViewModel.LOADING_PROPERTY:
+                    boolean loading = recipeViewModel.isLoading();
+                    searchButton.setEnabled(!loading);
+                    randomButton.setEnabled(!loading);
+                    break;
+            }
+        }
     }
 
     public String getViewName() {
@@ -139,5 +342,7 @@ public class LoggedInView extends JPanel implements ActionListener, PropertyChan
         this.changePasswordController = changePasswordController;
     }
 
-    public void setLogoutController(LogoutController logoutController) {this.logoutController = logoutController;}
+    public void setLogoutController(LogoutController logoutController) {
+        this.logoutController = logoutController;
+    }
 }
