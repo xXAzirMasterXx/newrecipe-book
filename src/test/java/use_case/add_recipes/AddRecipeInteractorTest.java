@@ -1,0 +1,219 @@
+package use_case.add_recipes;
+
+import entity.Recipe;
+import entity.RecipeFactory;
+import org.junit.jupiter.api.Test;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+/**
+ * Unit tests for the AddRecipeInteractor use case.
+ */
+class AddRecipeInteractorTest {
+
+    /**
+     * Simple in-memory data access object for testing.
+     */
+    private static class InMemoryAddRecipeUserDataAccessObject
+            implements AddRecipeUserDataAccessInterface {
+
+        private final Map<String, Recipe> storage = new HashMap<>();
+
+        @Override
+        public boolean existsByName(String name) {
+            return storage.containsKey(name);
+        }
+
+        @Override
+        public void save(Recipe recipe) {
+            storage.put(recipe.getName(), recipe);
+        }
+
+        public Recipe getByName(String name) {
+            return storage.get(name);
+        }
+    }
+
+    @Test
+    void successTest() {
+        String[] ingredients = {"egg", "milk"};
+        String[] measures = {"2", "200ml"};
+
+        AddRecipeInputData inputData = new AddRecipeInputData(
+                "Omelette",
+                "Breakfast",
+                "French",
+                "Beat eggs and fry.",
+                "imageUrl",
+                "youtubeUrl",
+                "sourceUrl",
+                ingredients,
+                measures,
+                "10",
+                false
+        );
+
+        InMemoryAddRecipeUserDataAccessObject repo =
+                new InMemoryAddRecipeUserDataAccessObject();
+        RecipeFactory factory = new RecipeFactory();
+
+        AddRecipeOutputBoundary successPresenter = new AddRecipeOutputBoundary() {
+            @Override
+            public void prepareSuccessView(AddRecipeOutputData data) {
+                assertEquals("Omelette", data.getName());
+                assertEquals(10, data.getCookingTime());
+                assertFalse(data.isOverwrite());
+                assertNotNull(data.getId());
+                assertNotNull(repo.getByName("Omelette"));
+            }
+
+            @Override
+            public void prepareFailView(String error) {
+                fail("Unexpected failure: " + error);
+            }
+        };
+
+        AddRecipeInputBoundary interactor =
+                new AddRecipeInteractor(repo, successPresenter, factory);
+        interactor.execute(inputData);
+    }
+
+    @Test
+    void missingNameFailureTest() {
+        String[] ingredients = {"egg"};
+        String[] measures = {"1"};
+
+        AddRecipeInputData inputData = new AddRecipeInputData(
+                "",
+                "Breakfast",
+                "French",
+                "Some instructions",
+                "imageUrl",
+                "youtubeUrl",
+                "sourceUrl",
+                ingredients,
+                measures,
+                "5",
+                false
+        );
+
+        InMemoryAddRecipeUserDataAccessObject repo =
+                new InMemoryAddRecipeUserDataAccessObject();
+        RecipeFactory factory = new RecipeFactory();
+
+        AddRecipeOutputBoundary failurePresenter = new AddRecipeOutputBoundary() {
+            @Override
+            public void prepareSuccessView(AddRecipeOutputData data) {
+                fail("Unexpected success.");
+            }
+
+            @Override
+            public void prepareFailView(String error) {
+                assertEquals("Recipe name is required.", error);
+            }
+        };
+
+        AddRecipeInputBoundary interactor =
+                new AddRecipeInteractor(repo, failurePresenter, factory);
+        interactor.execute(inputData);
+    }
+
+    @Test
+    void invalidCookingTimeFailureTest() {
+        String[] ingredients = {"egg"};
+        String[] measures = {"1"};
+
+        AddRecipeInputData inputData = new AddRecipeInputData(
+                "Omelette",
+                "Breakfast",
+                "French",
+                "Some instructions",
+                "imageUrl",
+                "youtubeUrl",
+                "sourceUrl",
+                ingredients,
+                measures,
+                "abc",     // invalid
+                false
+        );
+
+        InMemoryAddRecipeUserDataAccessObject repo =
+                new InMemoryAddRecipeUserDataAccessObject();
+        RecipeFactory factory = new RecipeFactory();
+
+        AddRecipeOutputBoundary failurePresenter = new AddRecipeOutputBoundary() {
+            @Override
+            public void prepareSuccessView(AddRecipeOutputData data) {
+                fail("Unexpected success.");
+            }
+
+            @Override
+            public void prepareFailView(String error) {
+                assertEquals("Cooking time must be a number.", error);
+            }
+        };
+
+        AddRecipeInputBoundary interactor =
+                new AddRecipeInteractor(repo, failurePresenter, factory);
+        interactor.execute(inputData);
+    }
+
+    @Test
+    void duplicateNameWithoutOverwriteFailureTest() {
+        String[] ingredients = {"egg"};
+        String[] measures = {"1"};
+
+        InMemoryAddRecipeUserDataAccessObject repo =
+                new InMemoryAddRecipeUserDataAccessObject();
+        RecipeFactory factory = new RecipeFactory();
+
+        // Save an existing recipe
+        Recipe existing = factory.create(
+                "id-1",
+                "Omelette",
+                "Breakfast",
+                "French",
+                "Old instructions",
+                "imageUrl",
+                "youtubeUrl",
+                "sourceUrl",
+                ingredients,
+                measures
+        );
+        repo.save(existing);
+
+        // New input with same name and overwrite = false
+        AddRecipeInputData inputData = new AddRecipeInputData(
+                "Omelette",
+                "Breakfast",
+                "French",
+                "New instructions",
+                "newImageUrl",
+                "newYoutubeUrl",
+                "newSourceUrl",
+                ingredients,
+                measures,
+                "10",
+                false
+        );
+
+        AddRecipeOutputBoundary failurePresenter = new AddRecipeOutputBoundary() {
+            @Override
+            public void prepareSuccessView(AddRecipeOutputData data) {
+                fail("Unexpected success.");
+            }
+
+            @Override
+            public void prepareFailView(String error) {
+                assertEquals("Recipe already exists. Confirm overwrite.", error);
+            }
+        };
+
+        AddRecipeInputBoundary interactor =
+                new AddRecipeInteractor(repo, failurePresenter, factory);
+        interactor.execute(inputData);
+    }
+}
