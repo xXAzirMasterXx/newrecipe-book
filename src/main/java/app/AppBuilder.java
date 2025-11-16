@@ -13,6 +13,7 @@ import interface_adapter.login.LoginPresenter;
 import interface_adapter.login.LoginViewModel;
 import interface_adapter.logout.LogoutController;
 import interface_adapter.logout.LogoutPresenter;
+import interface_adapter.recipe.RecipePresenter;
 import interface_adapter.signup.SignupController;
 import interface_adapter.signup.SignupPresenter;
 import interface_adapter.signup.SignupViewModel;
@@ -149,14 +150,20 @@ public class AppBuilder {
     }
 
     public AppBuilder addRecipeUseCase() {
-        // Create use cases
-        SearchRecipesUseCase searchRecipesUseCase = new SearchRecipesUseCase(recipeDataAccess);
-        GetRandomRecipeUseCase getRandomRecipeUseCase = new GetRandomRecipeUseCase(recipeDataAccess);
 
-        // Create controller
+        // 1. Create presenter, connects ViewModel
+        RecipePresenter recipePresenter = new RecipePresenter(recipeViewModel);
+
+        // 2. Create use cases, now they receive presenter
+        SearchRecipesUseCase searchRecipesUseCase = new SearchRecipesUseCase(recipeDataAccess, recipePresenter);
+        GetRandomRecipeUseCase getRandomRecipeUseCase = new GetRandomRecipeUseCase(recipeDataAccess, recipePresenter);
+
+        // 3. Create controller and pass use cases
         recipeController = new RecipeController(searchRecipesUseCase, getRandomRecipeUseCase);
+
         return this;
     }
+
 
     public JFrame build() {
         final JFrame application = new JFrame("User Login Example");
