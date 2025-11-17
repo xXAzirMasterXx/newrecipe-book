@@ -19,6 +19,9 @@ import java.awt.event.ActionListener;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.List;
+import java.net.URL;
+import java.awt.Image;
+
 
 
 public class LoggedInView extends JPanel implements ActionListener, PropertyChangeListener {
@@ -229,25 +232,65 @@ public class LoggedInView extends JPanel implements ActionListener, PropertyChan
         panel.setBorder(BorderFactory.createEtchedBorder());
         panel.setBackground(Color.WHITE);
 
+        // Name label
         JLabel nameLabel = new JLabel(recipe.getName());
         nameLabel.setFont(new Font("Arial", Font.BOLD, 14));
 
+        // ==== NEW: Image label ====
+        JLabel imageLabel = new JLabel();
+        imageLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        imageLabel.setVerticalAlignment(SwingConstants.CENTER);
+        imageLabel.setPreferredSize(new Dimension(200, 200)); // adjust as you like
+
+        String imageUrl = recipe.getImageUrl();
+        if (imageUrl != null && !imageUrl.isEmpty()) {
+            // Load image in a background thread so UI doesn't freeze
+            new Thread(() -> {
+                try {
+                    URL url = new URL(imageUrl);
+                    ImageIcon icon = new ImageIcon(url);
+                    // Optionally scale the image to fit nicely
+                    Image scaled = icon.getImage().getScaledInstance(
+                            200, 200, Image.SCALE_SMOOTH);
+                    ImageIcon scaledIcon = new ImageIcon(scaled);
+
+                    SwingUtilities.invokeLater(() -> imageLabel.setIcon(scaledIcon));
+                } catch (Exception ex) {
+                    // If loading fails, you can set a placeholder or leave it blank
+                    System.err.println("Failed to load image for recipe "
+                            + recipe.getName() + ": " + ex.getMessage());
+                }
+            }).start();
+        }
+
+        // Details text
         JTextArea detailsArea = new JTextArea(
                 "Category: " + recipe.getCategory() + "\n" +
                         "Cuisine: " + recipe.getArea() + "\n" +
                         "Ingredients: " + recipe.getIngredients().length + "\n" +
                         "Instructions: " + (recipe.getInstructions().length() > 100 ?
-                        recipe.getInstructions().substring(0, 100) + "..." : recipe.getInstructions())
+                        recipe.getInstructions().substring(0, 100) + "..." :
+                        recipe.getInstructions())
         );
         detailsArea.setEditable(false);
         detailsArea.setBackground(Color.WHITE);
         detailsArea.setLineWrap(true);
         detailsArea.setWrapStyleWord(true);
 
-        panel.add(nameLabel, BorderLayout.NORTH);
+        // Put name + image at the top
+        JPanel northPanel = new JPanel();
+        northPanel.setLayout(new BoxLayout(northPanel, BoxLayout.Y_AXIS));
+        northPanel.setBackground(Color.WHITE);
+        nameLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        imageLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        northPanel.add(nameLabel);
+        northPanel.add(Box.createRigidArea(new Dimension(0, 5)));
+        northPanel.add(imageLabel);
+
+        panel.add(northPanel, BorderLayout.NORTH);
         panel.add(detailsArea, BorderLayout.CENTER);
 
-        // Add a view details button
+        // View details button
         JButton viewDetailsButton = new JButton("View Details");
         viewDetailsButton.addActionListener(e -> showRecipeDetails(recipe));
         panel.add(viewDetailsButton, BorderLayout.SOUTH);
@@ -255,7 +298,9 @@ public class LoggedInView extends JPanel implements ActionListener, PropertyChan
         return panel;
     }
 
+
     private void showRecipeDetails(Recipe recipe) {
+        // ==== Build the text details ====
         StringBuilder details = new StringBuilder();
         details.append("Name: ").append(recipe.getName()).append("\n\n");
         details.append("Category: ").append(recipe.getCategory()).append("\n");
@@ -266,7 +311,11 @@ public class LoggedInView extends JPanel implements ActionListener, PropertyChan
         String[] measures = recipe.getMeasures();
         for (int i = 0; i < ingredients.length; i++) {
             if (ingredients[i] != null && !ingredients[i].isEmpty()) {
-                details.append("• ").append(measures[i]).append(" ").append(ingredients[i]).append("\n");
+                details.append("• ")
+                        .append(measures[i] != null ? measures[i] : "")
+                        .append(" ")
+                        .append(ingredients[i])
+                        .append("\n");
             }
         }
 
@@ -278,10 +327,47 @@ public class LoggedInView extends JPanel implements ActionListener, PropertyChan
         textArea.setWrapStyleWord(true);
 
         JScrollPane scrollPane = new JScrollPane(textArea);
-        scrollPane.setPreferredSize(new Dimension(500, 400));
+        scrollPane.setPreferredSize(new Dimension(500, 300));
 
-        JOptionPane.showMessageDialog(this, scrollPane, "Recipe Details: " + recipe.getName(), JOptionPane.INFORMATION_MESSAGE);
+        // ==== Image label ====
+        JLabel imageLabel = new JLabel();
+        imageLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        imageLabel.setVerticalAlignment(SwingConstants.CENTER);
+        imageLabel.setPreferredSize(new Dimension(300, 200)); // adjust as you like
+
+        String imageUrl = recipe.getImageUrl();
+        if (imageUrl != null && !imageUrl.isEmpty()) {
+            // Load image in a background thread
+            new Thread(() -> {
+                try {
+                    URL url = new URL(imageUrl);
+                    ImageIcon icon = new ImageIcon(url);
+                    Image scaled = icon.getImage().getScaledInstance(
+                            300, 200, Image.SCALE_SMOOTH);
+                    ImageIcon scaledIcon = new ImageIcon(scaled);
+
+                    SwingUtilities.invokeLater(() -> imageLabel.setIcon(scaledIcon));
+                } catch (Exception ex) {
+                    System.err.println("Failed to load details image for recipe "
+                            + recipe.getName() + ": " + ex.getMessage());
+                }
+            }).start();
+        }
+
+        // ==== Combine image + text in one panel ====
+        JPanel contentPanel = new JPanel(new BorderLayout());
+        contentPanel.add(imageLabel, BorderLayout.NORTH);
+        contentPanel.add(scrollPane, BorderLayout.CENTER);
+
+        // Show dialog
+        JOptionPane.showMessageDialog(
+                this,
+                contentPanel,
+                "Recipe Details: " + recipe.getName(),
+                JOptionPane.INFORMATION_MESSAGE
+        );
     }
+
 
     /**
      * React to a button click that results in evt.
