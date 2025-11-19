@@ -9,6 +9,7 @@ import interface_adapter.logout.LogoutController;
 import interface_adapter.recipe.RecipeController;
 import interface_adapter.recipe.RecipeViewModel;
 import entity.Recipe;
+import entity.FavoriteManager;
 
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
@@ -19,10 +20,11 @@ import java.awt.event.ActionListener;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.List;
+import java.util.ArrayList;
+import java.util.Set;
+import java.util.HashSet;
 import java.net.URL;
 import java.awt.Image;
-
-
 
 public class LoggedInView extends JPanel implements ActionListener, PropertyChangeListener {
 
@@ -67,6 +69,10 @@ public class LoggedInView extends JPanel implements ActionListener, PropertyChan
         searchPanel.add(searchField);
         searchPanel.add(searchButton);
         searchPanel.add(randomButton);
+
+        // Favorites button
+        final JButton favoritesButton = new JButton("My Favorites");
+        searchPanel.add(favoritesButton);
 
         // Results Panel
         resultsPanel.setLayout(new BoxLayout(resultsPanel, BoxLayout.Y_AXIS));
@@ -147,6 +153,9 @@ public class LoggedInView extends JPanel implements ActionListener, PropertyChan
         searchButton.addActionListener(evt -> performSearch());
         randomButton.addActionListener(evt -> getRandomRecipe());
 
+        // Favorites button listener
+        favoritesButton.addActionListener(evt -> showFavorites());
+
         // Add all components to main panel
         this.add(title);
         this.add(Box.createRigidArea(new Dimension(0, 10))); // Spacer
@@ -215,6 +224,12 @@ public class LoggedInView extends JPanel implements ActionListener, PropertyChan
 
     private void displayRecipes(List<Recipe> recipes) {
         resultsPanel.removeAll();
+
+        // Cache all displayed recipes
+        for (Recipe recipe : recipes) {
+            FavoriteManager.getInstance().cacheRecipe(recipe);
+        }
+
         if (recipes.isEmpty()) {
             resultsPanel.add(new JLabel("No recipes found. Try a different search term."));
         } else {
@@ -228,40 +243,40 @@ public class LoggedInView extends JPanel implements ActionListener, PropertyChan
     }
 
     private JPanel createRecipePanel(Recipe recipe) {
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setBorder(BorderFactory.createEtchedBorder());
-        panel.setBackground(Color.WHITE);
+    JPanel panel = new JPanel(new BorderLayout());
+    panel.setBorder(BorderFactory.createEtchedBorder());
+    panel.setBackground(Color.WHITE);
+      
+    boolean isFav = FavoriteManager.getInstance().isFavorite(recipe.getId());
+    String displayName = recipe.getName();
+    if (isFav) {
+        displayName = "FAV: " + displayName;
+    }
+    JLabel nameLabel = new JLabel(displayName);
+    nameLabel.setFont(new Font("Arial", Font.BOLD, 14));
+    if (isFav) {
+        nameLabel.setForeground(new Color(0, 100, 0));
+    }
 
-        // Name label
-        JLabel nameLabel = new JLabel(recipe.getName());
-        nameLabel.setFont(new Font("Arial", Font.BOLD, 14));
+    JLabel imageLabel = new JLabel();
+    imageLabel.setHorizontalAlignment(SwingConstants.CENTER);
+    imageLabel.setVerticalAlignment(SwingConstants.CENTER);
+    imageLabel.setPreferredSize(new Dimension(200, 200));
 
-        // ==== NEW: Image label ====
-        JLabel imageLabel = new JLabel();
-        imageLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        imageLabel.setVerticalAlignment(SwingConstants.CENTER);
-        imageLabel.setPreferredSize(new Dimension(200, 200)); // adjust as you like
-
-        String imageUrl = recipe.getImageUrl();
-        if (imageUrl != null && !imageUrl.isEmpty()) {
-            // Load image in a background thread so UI doesn't freeze
-            new Thread(() -> {
-                try {
-                    URL url = new URL(imageUrl);
-                    ImageIcon icon = new ImageIcon(url);
-                    // Optionally scale the image to fit nicely
-                    Image scaled = icon.getImage().getScaledInstance(
-                            200, 200, Image.SCALE_SMOOTH);
-                    ImageIcon scaledIcon = new ImageIcon(scaled);
-
-                    SwingUtilities.invokeLater(() -> imageLabel.setIcon(scaledIcon));
-                } catch (Exception ex) {
-                    // If loading fails, you can set a placeholder or leave it blank
-                    System.err.println("Failed to load image for recipe "
-                            + recipe.getName() + ": " + ex.getMessage());
-                }
-            }).start();
-        }
+    String imageUrl = recipe.getImageUrl();
+    if (imageUrl != null && !imageUrl.isEmpty()) {
+        new Thread(() -> {
+            try {
+                URL url = new URL(imageUrl);
+                ImageIcon icon = new ImageIcon(url);
+                Image scaled = icon.getImage().getScaledInstance(200, 200, Image.SCALE_SMOOTH);
+                ImageIcon scaledIcon = new ImageIcon(scaled);
+                SwingUtilities.invokeLater(() -> imageLabel.setIcon(scaledIcon));
+            } catch (Exception ex) {
+                System.err.println("Failed to load image for recipe " + recipe.getName() + ": " + ex.getMessage());
+            }
+        }).start();
+    }
 
         // Details text
         JTextArea detailsArea = new JTextArea(
@@ -300,72 +315,177 @@ public class LoggedInView extends JPanel implements ActionListener, PropertyChan
 
 
     private void showRecipeDetails(Recipe recipe) {
-        // ==== Build the text details ====
-        StringBuilder details = new StringBuilder();
-        details.append("Name: ").append(recipe.getName()).append("\n\n");
-        details.append("Category: ").append(recipe.getCategory()).append("\n");
-        details.append("Cuisine: ").append(recipe.getArea()).append("\n\n");
-        details.append("Ingredients:\n");
+    // Cache this recipe when viewing details
+    FavoriteManager.getInstance().cacheRecipe(recipe);
 
-        String[] ingredients = recipe.getIngredients();
-        String[] measures = recipe.getMeasures();
-        for (int i = 0; i < ingredients.length; i++) {
-            if (ingredients[i] != null && !ingredients[i].isEmpty()) {
-                details.append("• ")
-                        .append(measures[i] != null ? measures[i] : "")
-                        .append(" ")
-                        .append(ingredients[i])
-                        .append("\n");
+    // Build the text details
+    StringBuilder details = new StringBuilder();
+    details.append("Name: ").append(recipe.getName()).append("\n\n");
+    details.append("Category: ").append(recipe.getCategory()).append("\n");
+    details.append("Cuisine: ").append(recipe.getArea()).append("\n\n");
+    details.append("Ingredients:\n");
+
+    String[] ingredients = recipe.getIngredients();
+    String[] measures = recipe.getMeasures();
+    for (int i = 0; i < ingredients.length; i++) {
+        if (ingredients[i] != null && !ingredients[i].isEmpty()) {
+            details.append("• ")
+                    .append(measures[i] != null ? measures[i] : "")
+                    .append(" ")
+                    .append(ingredients[i])
+                    .append("\n");
+        }
+    }
+
+    details.append("\nInstructions:\n").append(recipe.getInstructions());
+
+    JTextArea textArea = new JTextArea(details.toString());
+    textArea.setEditable(false);
+    textArea.setLineWrap(true);
+    textArea.setWrapStyleWord(true);
+
+    JScrollPane scrollPane = new JScrollPane(textArea);
+    scrollPane.setPreferredSize(new Dimension(500, 300));
+
+    // Image label
+    JLabel imageLabel = new JLabel();
+    imageLabel.setHorizontalAlignment(SwingConstants.CENTER);
+    imageLabel.setVerticalAlignment(SwingConstants.CENTER);
+    imageLabel.setPreferredSize(new Dimension(300, 200));
+
+    String imageUrl = recipe.getImageUrl();
+    if (imageUrl != null && !imageUrl.isEmpty()) {
+        // Load image in a background thread
+        new Thread(() -> {
+            try {
+                URL url = new URL(imageUrl);
+                ImageIcon icon = new ImageIcon(url);
+                Image scaled = icon.getImage().getScaledInstance(300, 200, Image.SCALE_SMOOTH);
+                ImageIcon scaledIcon = new ImageIcon(scaled);
+
+                SwingUtilities.invokeLater(() -> imageLabel.setIcon(scaledIcon));
+            } catch (Exception ex) {
+                System.err.println("Failed to load details image for recipe "
+                        + recipe.getName() + ": " + ex.getMessage());
+            }
+        }).start();
+    }
+
+    // Add favorite button
+    JButton favoriteButton = new JButton("☆ Favorite");
+    favoriteButton.addActionListener(e -> {
+        boolean isNowFavorite = FavoriteManager.getInstance().toggleFavorite(recipe.getId());
+        if (isNowFavorite) {
+            favoriteButton.setText("★ Favorited");
+            JOptionPane.showMessageDialog(this, "Added to favorites!", "Favorite", JOptionPane.INFORMATION_MESSAGE);
+        } else {
+            favoriteButton.setText("☆ Favorite");
+            JOptionPane.showMessageDialog(this, "Removed from favorites", "Favorite", JOptionPane.INFORMATION_MESSAGE);
+        }
+
+        // Refresh the recipe display to show/hide the star
+        refreshRecipeDisplay();
+    });
+
+    // Create a panel for the button
+    JPanel buttonPanel = new JPanel();
+    buttonPanel.add(favoriteButton);
+
+    // Create main panel with image + text + favorite button
+    JPanel mainPanel = new JPanel(new BorderLayout());
+    mainPanel.add(imageLabel, BorderLayout.NORTH);
+    mainPanel.add(scrollPane, BorderLayout.CENTER);
+    mainPanel.add(buttonPanel, BorderLayout.SOUTH);
+
+    JOptionPane.showMessageDialog(this, mainPanel, "Recipe Details: " + recipe.getName(), JOptionPane.INFORMATION_MESSAGE);
+}
+
+    private void refreshRecipeDisplay() {
+        System.out.println("DEBUG: refreshRecipeDisplay called");
+
+        // Get the current scroll position BEFORE refreshing
+        JScrollBar verticalBar = ((JScrollPane)resultsPanel.getParent().getParent()).getVerticalScrollBar();
+        int scrollPosition = verticalBar.getValue();
+        System.out.println("DEBUG: Current scroll position: " + scrollPosition);
+
+        // Get the current recipes from the view model
+        List<Recipe> currentRecipes = recipeViewModel.getRecipes();
+
+        if (currentRecipes != null && !currentRecipes.isEmpty()) {
+            System.out.println("DEBUG: Refreshing " + currentRecipes.size() + " recipes");
+
+            // Completely rebuild the results panel
+            resultsPanel.removeAll();
+            resultsPanel.setLayout(new BoxLayout(resultsPanel, BoxLayout.Y_AXIS));
+
+            for (Recipe recipe : currentRecipes) {
+                resultsPanel.add(createRecipePanel(recipe));
+                resultsPanel.add(Box.createRigidArea(new Dimension(0, 5)));
+            }
+
+            // Force UI update
+            resultsPanel.revalidate();
+            resultsPanel.repaint();
+
+            // Restore scroll position AFTER UI update
+            SwingUtilities.invokeLater(() -> {
+                verticalBar.setValue(scrollPosition);
+                System.out.println("DEBUG: Restored scroll position to: " + scrollPosition);
+            });
+
+            System.out.println("DEBUG: UI refresh complete");
+        } else {
+            System.out.println("DEBUG: No recipes to refresh");
+        }
+    }
+
+    private void showFavorites() {
+        Set<String> favoriteIds = FavoriteManager.getInstance().getFavoriteRecipeIds();
+
+        if (favoriteIds.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "No favorite recipes yet!\n\nClick the ☆ Favorite button on recipe details to add some.",
+                    "My Favorites",
+                    JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        // Try to get favorites from cache
+        List<Recipe> favoriteRecipes = FavoriteManager.getInstance().getFavoriteRecipesFromCache();
+
+        if (favoriteRecipes.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "No favorite recipes found in cache.\n\nFavorite some recipes from your current search first.",
+                    "My Favorites",
+                    JOptionPane.WARNING_MESSAGE);
+        } else {
+            // Display what we found
+            displayRecipes(favoriteRecipes);
+
+            // Show status message about cache
+            int totalFavorites = favoriteIds.size();
+            int cachedFavorites = favoriteRecipes.size();
+            if (cachedFavorites < totalFavorites) {
+                statusLabel.setText("Showing " + cachedFavorites + " of " + totalFavorites +
+                        " favorites (" + (totalFavorites - cachedFavorites) + " not in cache)");
+            } else {
+                statusLabel.setText("Showing all " + totalFavorites + " favorite recipes");
+            }
+        }
+    }
+
+    private List<Recipe> getRecipesByIds(Set<String> recipeIds) {
+        List<Recipe> favorites = new ArrayList<>();
+
+        // For now, we can only show favorites from currently loaded recipes
+        List<Recipe> currentRecipes = recipeViewModel.getRecipes();
+        for (Recipe recipe : currentRecipes) {
+            if (recipeIds.contains(recipe.getId())) {
+                favorites.add(recipe);
             }
         }
 
-        details.append("\nInstructions:\n").append(recipe.getInstructions());
-
-        JTextArea textArea = new JTextArea(details.toString());
-        textArea.setEditable(false);
-        textArea.setLineWrap(true);
-        textArea.setWrapStyleWord(true);
-
-        JScrollPane scrollPane = new JScrollPane(textArea);
-        scrollPane.setPreferredSize(new Dimension(500, 300));
-
-        // ==== Image label ====
-        JLabel imageLabel = new JLabel();
-        imageLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        imageLabel.setVerticalAlignment(SwingConstants.CENTER);
-        imageLabel.setPreferredSize(new Dimension(300, 200)); // adjust as you like
-
-        String imageUrl = recipe.getImageUrl();
-        if (imageUrl != null && !imageUrl.isEmpty()) {
-            // Load image in a background thread
-            new Thread(() -> {
-                try {
-                    URL url = new URL(imageUrl);
-                    ImageIcon icon = new ImageIcon(url);
-                    Image scaled = icon.getImage().getScaledInstance(
-                            300, 200, Image.SCALE_SMOOTH);
-                    ImageIcon scaledIcon = new ImageIcon(scaled);
-
-                    SwingUtilities.invokeLater(() -> imageLabel.setIcon(scaledIcon));
-                } catch (Exception ex) {
-                    System.err.println("Failed to load details image for recipe "
-                            + recipe.getName() + ": " + ex.getMessage());
-                }
-            }).start();
-        }
-
-        // ==== Combine image + text in one panel ====
-        JPanel contentPanel = new JPanel(new BorderLayout());
-        contentPanel.add(imageLabel, BorderLayout.NORTH);
-        contentPanel.add(scrollPane, BorderLayout.CENTER);
-
-        // Show dialog
-        JOptionPane.showMessageDialog(
-                this,
-                contentPanel,
-                "Recipe Details: " + recipe.getName(),
-                JOptionPane.INFORMATION_MESSAGE
-        );
+        return favorites;
     }
 
 
