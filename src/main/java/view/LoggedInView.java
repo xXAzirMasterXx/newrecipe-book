@@ -23,6 +23,8 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.Set;
 import java.util.HashSet;
+import java.net.URL;
+import java.awt.Image;
 
 public class LoggedInView extends JPanel implements ActionListener, PropertyChangeListener {
 
@@ -241,39 +243,69 @@ public class LoggedInView extends JPanel implements ActionListener, PropertyChan
     }
 
     private JPanel createRecipePanel(Recipe recipe) {
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setBorder(BorderFactory.createEtchedBorder());
-        panel.setBackground(Color.WHITE);
+    JPanel panel = new JPanel(new BorderLayout());
+    panel.setBorder(BorderFactory.createEtchedBorder());
+    panel.setBackground(Color.WHITE);
+      
+    boolean isFav = FavoriteManager.getInstance().isFavorite(recipe.getId());
+    String displayName = recipe.getName();
+    if (isFav) {
+        displayName = "FAV: " + displayName;
+    }
+    JLabel nameLabel = new JLabel(displayName);
+    nameLabel.setFont(new Font("Arial", Font.BOLD, 14));
+    if (isFav) {
+        nameLabel.setForeground(new Color(0, 100, 0));
+    }
 
-        boolean isFav = FavoriteManager.getInstance().isFavorite(recipe.getId());
+    JLabel imageLabel = new JLabel();
+    imageLabel.setHorizontalAlignment(SwingConstants.CENTER);
+    imageLabel.setVerticalAlignment(SwingConstants.CENTER);
+    imageLabel.setPreferredSize(new Dimension(200, 200));
 
-        // Text-based favorite indicator
-        String displayName = recipe.getName();
-        if (isFav) {
-            displayName = "FAV: " + displayName;  // Simple text prefix
-        }
-        JLabel nameLabel = new JLabel(displayName);
-        nameLabel.setFont(new Font("Arial", Font.BOLD, 14));
-        if (isFav) {
-            nameLabel.setForeground(new Color(0, 100, 0));  // Dark green for visibility
-        }
+    String imageUrl = recipe.getImageUrl();
+    if (imageUrl != null && !imageUrl.isEmpty()) {
+        new Thread(() -> {
+            try {
+                URL url = new URL(imageUrl);
+                ImageIcon icon = new ImageIcon(url);
+                Image scaled = icon.getImage().getScaledInstance(200, 200, Image.SCALE_SMOOTH);
+                ImageIcon scaledIcon = new ImageIcon(scaled);
+                SwingUtilities.invokeLater(() -> imageLabel.setIcon(scaledIcon));
+            } catch (Exception ex) {
+                System.err.println("Failed to load image for recipe " + recipe.getName() + ": " + ex.getMessage());
+            }
+        }).start();
+    }
 
+        // Details text
         JTextArea detailsArea = new JTextArea(
                 "Category: " + recipe.getCategory() + "\n" +
                         "Cuisine: " + recipe.getArea() + "\n" +
                         "Ingredients: " + recipe.getIngredients().length + "\n" +
                         "Instructions: " + (recipe.getInstructions().length() > 100 ?
-                        recipe.getInstructions().substring(0, 100) + "..." : recipe.getInstructions())
+                        recipe.getInstructions().substring(0, 100) + "..." :
+                        recipe.getInstructions())
         );
         detailsArea.setEditable(false);
         detailsArea.setBackground(Color.WHITE);
         detailsArea.setLineWrap(true);
         detailsArea.setWrapStyleWord(true);
 
-        panel.add(nameLabel, BorderLayout.NORTH);
+        // Put name + image at the top
+        JPanel northPanel = new JPanel();
+        northPanel.setLayout(new BoxLayout(northPanel, BoxLayout.Y_AXIS));
+        northPanel.setBackground(Color.WHITE);
+        nameLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        imageLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        northPanel.add(nameLabel);
+        northPanel.add(Box.createRigidArea(new Dimension(0, 5)));
+        northPanel.add(imageLabel);
+
+        panel.add(northPanel, BorderLayout.NORTH);
         panel.add(detailsArea, BorderLayout.CENTER);
 
-        // Add a view details button
+        // View details button
         JButton viewDetailsButton = new JButton("View Details");
         viewDetailsButton.addActionListener(e -> showRecipeDetails(recipe));
         panel.add(viewDetailsButton, BorderLayout.SOUTH);
@@ -281,61 +313,92 @@ public class LoggedInView extends JPanel implements ActionListener, PropertyChan
         return panel;
     }
 
+
     private void showRecipeDetails(Recipe recipe) {
-        // Cache this recipe when viewing details
-        FavoriteManager.getInstance().cacheRecipe(recipe);
+    // Cache this recipe when viewing details
+    FavoriteManager.getInstance().cacheRecipe(recipe);
 
-        StringBuilder details = new StringBuilder();
-        details.append("Name: ").append(recipe.getName()).append("\n\n");
-        details.append("Category: ").append(recipe.getCategory()).append("\n");
-        details.append("Cuisine: ").append(recipe.getArea()).append("\n\n");
-        details.append("Ingredients:\n");
+    // Build the text details
+    StringBuilder details = new StringBuilder();
+    details.append("Name: ").append(recipe.getName()).append("\n\n");
+    details.append("Category: ").append(recipe.getCategory()).append("\n");
+    details.append("Cuisine: ").append(recipe.getArea()).append("\n\n");
+    details.append("Ingredients:\n");
 
-        String[] ingredients = recipe.getIngredients();
-        String[] measures = recipe.getMeasures();
-        for (int i = 0; i < ingredients.length; i++) {
-            if (ingredients[i] != null && !ingredients[i].isEmpty()) {
-                details.append("• ").append(measures[i]).append(" ").append(ingredients[i]).append("\n");
+    String[] ingredients = recipe.getIngredients();
+    String[] measures = recipe.getMeasures();
+    for (int i = 0; i < ingredients.length; i++) {
+        if (ingredients[i] != null && !ingredients[i].isEmpty()) {
+            details.append("• ")
+                    .append(measures[i] != null ? measures[i] : "")
+                    .append(" ")
+                    .append(ingredients[i])
+                    .append("\n");
+        }
+    }
+
+    details.append("\nInstructions:\n").append(recipe.getInstructions());
+
+    JTextArea textArea = new JTextArea(details.toString());
+    textArea.setEditable(false);
+    textArea.setLineWrap(true);
+    textArea.setWrapStyleWord(true);
+
+    JScrollPane scrollPane = new JScrollPane(textArea);
+    scrollPane.setPreferredSize(new Dimension(500, 300));
+
+    // Image label
+    JLabel imageLabel = new JLabel();
+    imageLabel.setHorizontalAlignment(SwingConstants.CENTER);
+    imageLabel.setVerticalAlignment(SwingConstants.CENTER);
+    imageLabel.setPreferredSize(new Dimension(300, 200));
+
+    String imageUrl = recipe.getImageUrl();
+    if (imageUrl != null && !imageUrl.isEmpty()) {
+        // Load image in a background thread
+        new Thread(() -> {
+            try {
+                URL url = new URL(imageUrl);
+                ImageIcon icon = new ImageIcon(url);
+                Image scaled = icon.getImage().getScaledInstance(300, 200, Image.SCALE_SMOOTH);
+                ImageIcon scaledIcon = new ImageIcon(scaled);
+
+                SwingUtilities.invokeLater(() -> imageLabel.setIcon(scaledIcon));
+            } catch (Exception ex) {
+                System.err.println("Failed to load details image for recipe "
+                        + recipe.getName() + ": " + ex.getMessage());
             }
+        }).start();
+    }
+
+    // Add favorite button
+    JButton favoriteButton = new JButton("☆ Favorite");
+    favoriteButton.addActionListener(e -> {
+        boolean isNowFavorite = FavoriteManager.getInstance().toggleFavorite(recipe.getId());
+        if (isNowFavorite) {
+            favoriteButton.setText("★ Favorited");
+            JOptionPane.showMessageDialog(this, "Added to favorites!", "Favorite", JOptionPane.INFORMATION_MESSAGE);
+        } else {
+            favoriteButton.setText("☆ Favorite");
+            JOptionPane.showMessageDialog(this, "Removed from favorites", "Favorite", JOptionPane.INFORMATION_MESSAGE);
         }
 
-        details.append("\nInstructions:\n").append(recipe.getInstructions());
+        // Refresh the recipe display to show/hide the star
+        refreshRecipeDisplay();
+    });
 
-        JTextArea textArea = new JTextArea(details.toString());
-        textArea.setEditable(false);
-        textArea.setLineWrap(true);
-        textArea.setWrapStyleWord(true);
+    // Create a panel for the button
+    JPanel buttonPanel = new JPanel();
+    buttonPanel.add(favoriteButton);
 
-        JScrollPane scrollPane = new JScrollPane(textArea);
-        scrollPane.setPreferredSize(new Dimension(500, 400));
+    // Create main panel with image + text + favorite button
+    JPanel mainPanel = new JPanel(new BorderLayout());
+    mainPanel.add(imageLabel, BorderLayout.NORTH);
+    mainPanel.add(scrollPane, BorderLayout.CENTER);
+    mainPanel.add(buttonPanel, BorderLayout.SOUTH);
 
-        // Add favorite button
-        JButton favoriteButton = new JButton("☆ Favorite");
-        favoriteButton.addActionListener(e -> {
-            boolean isNowFavorite = FavoriteManager.getInstance().toggleFavorite(recipe.getId());
-            if (isNowFavorite) {
-                favoriteButton.setText("★ Favorited");
-                JOptionPane.showMessageDialog(this, "Added to favorites!", "Favorite", JOptionPane.INFORMATION_MESSAGE);
-            } else {
-                favoriteButton.setText("☆ Favorite");
-                JOptionPane.showMessageDialog(this, "Removed from favorites", "Favorite", JOptionPane.INFORMATION_MESSAGE);
-            }
-
-            // Refresh the recipe display to show/hide the star
-            refreshRecipeDisplay();
-        });
-
-        // Create a panel for the button
-        JPanel buttonPanel = new JPanel();
-        buttonPanel.add(favoriteButton);
-
-        // Create main panel with text area and button
-        JPanel mainPanel = new JPanel(new BorderLayout());
-        mainPanel.add(scrollPane, BorderLayout.CENTER);
-        mainPanel.add(buttonPanel, BorderLayout.SOUTH);
-
-        JOptionPane.showMessageDialog(this, mainPanel, "Recipe Details: " + recipe.getName(), JOptionPane.INFORMATION_MESSAGE);
-    }
+    JOptionPane.showMessageDialog(this, mainPanel, "Recipe Details: " + recipe.getName(), JOptionPane.INFORMATION_MESSAGE);
+}
 
     private void refreshRecipeDisplay() {
         System.out.println("DEBUG: refreshRecipeDisplay called");
@@ -424,6 +487,7 @@ public class LoggedInView extends JPanel implements ActionListener, PropertyChan
 
         return favorites;
     }
+
 
     /**
      * React to a button click that results in evt.
