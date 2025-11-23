@@ -6,11 +6,15 @@ import use_case.change_password.ChangePasswordUserDataAccessInterface;
 import use_case.login.LoginUserDataAccessInterface;
 import use_case.logout.LogoutUserDataAccessInterface;
 import use_case.signup.SignupUserDataAccessInterface;
+import use_case.add_ingredients.AddIngredientUserDataInterface;
+import use_case.ingredient_inventory.IngredientInventoryUserDataAccessInterface;
 
 import java.io.*;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.*;
+
+import static java.lang.Boolean.FALSE;
+import static java.lang.Boolean.TRUE;
+import static java.lang.String.valueOf;
 
 /**
  * DAO for user data implemented using a File to persist the data.
@@ -18,9 +22,11 @@ import java.util.Map;
 public class FileUserDataAccessObject implements SignupUserDataAccessInterface,
                                                  LoginUserDataAccessInterface,
                                                  ChangePasswordUserDataAccessInterface,
-                                                 LogoutUserDataAccessInterface {
+                                                 LogoutUserDataAccessInterface,
+                                                 AddIngredientUserDataInterface,
+                                                 IngredientInventoryUserDataAccessInterface  {
 
-    private static final String HEADER = "username,password";
+    private static final String HEADER = "username,password,ingredients";
 
     private final File csvFile;
     private final Map<String, Integer> headers = new LinkedHashMap<>();
@@ -39,6 +45,7 @@ public class FileUserDataAccessObject implements SignupUserDataAccessInterface,
         csvFile = new File(csvPath);
         headers.put("username", 0);
         headers.put("password", 1);
+        headers.put("ingredients", 2);
 
         if (csvFile.length() == 0) {
             save();
@@ -55,9 +62,20 @@ public class FileUserDataAccessObject implements SignupUserDataAccessInterface,
                 String row;
                 while ((row = reader.readLine()) != null) {
                     final String[] col = row.split(",");
-                    final String username = String.valueOf(col[headers.get("username")]);
-                    final String password = String.valueOf(col[headers.get("password")]);
-                    final User user = userFactory.create(username, password);
+                    final String username = valueOf(col[headers.get("username")]);
+                    final String password = valueOf(col[headers.get("password")]);
+                    User user;
+
+                    if(col.length == 2){
+                        user = userFactory.create(username, password);
+                    }
+                    else{
+                        final String[] ingredient_header = String.valueOf(col[headers.get("ingredients")]).split(" ");
+                        List<String> ingredients = new ArrayList<>();
+                        Collections.addAll(ingredients, ingredient_header);
+                        user = userFactory.create(username, password, ingredients);
+                    }
+
                     accounts.put(username, user);
                 }
             }
@@ -121,4 +139,15 @@ public class FileUserDataAccessObject implements SignupUserDataAccessInterface,
         accounts.put(user.getName(), user);
         save();
     }
+
+    @Override
+    public void addIngredient(User user){
+        accounts.put(user.getName(), user);
+        save();
+    }
+
+    public List<String> getIngredients(String username){
+        return accounts.get(username).getIngredient_inventory();
+    }
+
 }
