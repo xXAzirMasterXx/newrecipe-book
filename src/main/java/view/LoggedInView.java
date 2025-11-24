@@ -22,9 +22,11 @@ import java.beans.PropertyChangeListener;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Set;
-import java.util.HashSet;
 import java.net.URL;
 import java.awt.Image;
+import use_case.add_recipe.UnitConversionUtils;
+
+
 
 public class LoggedInView extends JPanel implements ActionListener, PropertyChangeListener {
 
@@ -315,90 +317,92 @@ public class LoggedInView extends JPanel implements ActionListener, PropertyChan
 
 
     private void showRecipeDetails(Recipe recipe) {
-    // Cache this recipe when viewing details
-    FavoriteManager.getInstance().cacheRecipe(recipe);
+        // Cache this recipe when viewing details
+        FavoriteManager.getInstance().cacheRecipe(recipe);
 
-    // Build the text details
-    StringBuilder details = new StringBuilder();
-    details.append("Name: ").append(recipe.getName()).append("\n\n");
-    details.append("Category: ").append(recipe.getCategory()).append("\n");
-    details.append("Cuisine: ").append(recipe.getArea()).append("\n\n");
-    details.append("Ingredients:\n");
+        // Text area for recipe details
+        final JTextArea textArea = new JTextArea();
+        textArea.setEditable(false);
+        textArea.setLineWrap(true);
+        textArea.setWrapStyleWord(true);
 
-    String[] ingredients = recipe.getIngredients();
-    String[] measures = recipe.getMeasures();
-    for (int i = 0; i < ingredients.length; i++) {
-        if (ingredients[i] != null && !ingredients[i].isEmpty()) {
-            details.append("• ")
-                    .append(measures[i] != null ? measures[i] : "")
-                    .append(" ")
-                    .append(ingredients[i])
-                    .append("\n");
+        // Start in METRIC by default (you can change to ORIGINAL/IMPERIAL if you prefer)
+        final UnitSystem[] currentUnit = new UnitSystem[]{UnitSystem.METRIC};
+        textArea.setText(buildRecipeDetailsText(recipe, currentUnit[0]));
+
+        JScrollPane scrollPane = new JScrollPane(textArea);
+        scrollPane.setPreferredSize(new Dimension(500, 300));
+
+        // Image label
+        JLabel imageLabel = new JLabel();
+        imageLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        imageLabel.setVerticalAlignment(SwingConstants.CENTER);
+        imageLabel.setPreferredSize(new Dimension(300, 200));
+
+        String imageUrl = recipe.getImageUrl();
+        if (imageUrl != null && !imageUrl.isEmpty()) {
+            // Load image in a background thread
+            new Thread(() -> {
+                try {
+                    URL url = new URL(imageUrl);
+                    ImageIcon icon = new ImageIcon(url);
+                    Image scaled = icon.getImage().getScaledInstance(300, 200, Image.SCALE_SMOOTH);
+                    ImageIcon scaledIcon = new ImageIcon(scaled);
+
+                    SwingUtilities.invokeLater(() -> imageLabel.setIcon(scaledIcon));
+                } catch (Exception ex) {
+                    System.err.println("Failed to load details image for recipe "
+                            + recipe.getName() + ": " + ex.getMessage());
+                }
+            }).start();
         }
-    }
 
-    details.append("\nInstructions:\n").append(recipe.getInstructions());
-
-    JTextArea textArea = new JTextArea(details.toString());
-    textArea.setEditable(false);
-    textArea.setLineWrap(true);
-    textArea.setWrapStyleWord(true);
-
-    JScrollPane scrollPane = new JScrollPane(textArea);
-    scrollPane.setPreferredSize(new Dimension(500, 300));
-
-    // Image label
-    JLabel imageLabel = new JLabel();
-    imageLabel.setHorizontalAlignment(SwingConstants.CENTER);
-    imageLabel.setVerticalAlignment(SwingConstants.CENTER);
-    imageLabel.setPreferredSize(new Dimension(300, 200));
-
-    String imageUrl = recipe.getImageUrl();
-    if (imageUrl != null && !imageUrl.isEmpty()) {
-        // Load image in a background thread
-        new Thread(() -> {
-            try {
-                URL url = new URL(imageUrl);
-                ImageIcon icon = new ImageIcon(url);
-                Image scaled = icon.getImage().getScaledInstance(300, 200, Image.SCALE_SMOOTH);
-                ImageIcon scaledIcon = new ImageIcon(scaled);
-
-                SwingUtilities.invokeLater(() -> imageLabel.setIcon(scaledIcon));
-            } catch (Exception ex) {
-                System.err.println("Failed to load details image for recipe "
-                        + recipe.getName() + ": " + ex.getMessage());
+        // Favorite button
+        JButton favoriteButton = new JButton("☆ Favorite");
+        favoriteButton.addActionListener(e -> {
+            boolean isNowFavorite = FavoriteManager.getInstance().toggleFavorite(recipe.getId());
+            if (isNowFavorite) {
+                favoriteButton.setText("★ Favorited");
+                JOptionPane.showMessageDialog(this, "Added to favorites!", "Favorite", JOptionPane.INFORMATION_MESSAGE);
+            } else {
+                favoriteButton.setText("☆ Favorite");
+                JOptionPane.showMessageDialog(this, "Removed from favorites", "Favorite", JOptionPane.INFORMATION_MESSAGE);
             }
-        }).start();
+
+            // Refresh the recipe display to show/hide the star
+            refreshRecipeDisplay();
+        });
+
+        // **Unit toggle button** – goes to the LEFT of favoriteButton
+        JButton unitToggleButton = new JButton("Show Imperial");
+        unitToggleButton.addActionListener(e -> {
+            if (currentUnit[0] == UnitSystem.METRIC) {
+                currentUnit[0] = UnitSystem.IMPERIAL;
+                unitToggleButton.setText("Show Metric");
+            } else {
+                currentUnit[0] = UnitSystem.METRIC;
+                unitToggleButton.setText("Show Imperial");
+            }
+            textArea.setText(buildRecipeDetailsText(recipe, currentUnit[0]));
+            textArea.setCaretPosition(0); // scroll back to top on change
+        });
+
+        // Button panel: toggle on the left, favorite on the right
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.add(unitToggleButton); // left
+        buttonPanel.add(favoriteButton);   // right
+
+        // Main panel with image + text + buttons
+        JPanel mainPanel = new JPanel(new BorderLayout());
+        mainPanel.add(imageLabel, BorderLayout.NORTH);
+        mainPanel.add(scrollPane, BorderLayout.CENTER);
+        mainPanel.add(buttonPanel, BorderLayout.SOUTH);
+
+        JOptionPane.showMessageDialog(this, mainPanel,
+                "Recipe Details: " + recipe.getName(),
+                JOptionPane.INFORMATION_MESSAGE);
     }
 
-    // Add favorite button
-    JButton favoriteButton = new JButton("☆ Favorite");
-    favoriteButton.addActionListener(e -> {
-        boolean isNowFavorite = FavoriteManager.getInstance().toggleFavorite(recipe.getId());
-        if (isNowFavorite) {
-            favoriteButton.setText("★ Favorited");
-            JOptionPane.showMessageDialog(this, "Added to favorites!", "Favorite", JOptionPane.INFORMATION_MESSAGE);
-        } else {
-            favoriteButton.setText("☆ Favorite");
-            JOptionPane.showMessageDialog(this, "Removed from favorites", "Favorite", JOptionPane.INFORMATION_MESSAGE);
-        }
-
-        // Refresh the recipe display to show/hide the star
-        refreshRecipeDisplay();
-    });
-
-    // Create a panel for the button
-    JPanel buttonPanel = new JPanel();
-    buttonPanel.add(favoriteButton);
-
-    // Create main panel with image + text + favorite button
-    JPanel mainPanel = new JPanel(new BorderLayout());
-    mainPanel.add(imageLabel, BorderLayout.NORTH);
-    mainPanel.add(scrollPane, BorderLayout.CENTER);
-    mainPanel.add(buttonPanel, BorderLayout.SOUTH);
-
-    JOptionPane.showMessageDialog(this, mainPanel, "Recipe Details: " + recipe.getName(), JOptionPane.INFORMATION_MESSAGE);
-}
 
     private void refreshRecipeDisplay() {
         System.out.println("DEBUG: refreshRecipeDisplay called");
@@ -551,4 +555,59 @@ public class LoggedInView extends JPanel implements ActionListener, PropertyChan
     public void setLogoutController(LogoutController logoutController) {
         this.logoutController = logoutController;
     }
+
+    private enum UnitSystem {
+        METRIC,
+        IMPERIAL
+    }
+
+
+    private String buildRecipeDetailsText(Recipe recipe, UnitSystem unitSystem) {
+        StringBuilder details = new StringBuilder();
+        details.append("Name: ").append(recipe.getName()).append("\n\n");
+        details.append("Category: ").append(recipe.getCategory()).append("\n");
+        details.append("Cuisine: ").append(recipe.getArea()).append("\n\n");
+
+        String unitLabel = (unitSystem == UnitSystem.METRIC)
+                ? "Metric (g / mL where possible)"
+                : "Imperial (oz / tbsp / tsp / lb where possible)";
+
+        details.append("Ingredients (").append(unitLabel).append("):\n");
+
+        String[] ingredients = recipe.getIngredients();
+        String[] measuresOriginal = recipe.getMeasures();
+
+        String[] measuresMetric = UnitConversionUtils.toMetric(measuresOriginal);
+        String[] measuresImperial = UnitConversionUtils.toImperial(measuresOriginal);
+
+        String[] chosenMeasures = (unitSystem == UnitSystem.METRIC)
+                ? measuresMetric
+                : measuresImperial;
+
+        if (ingredients != null) {
+            for (int i = 0; i < ingredients.length; i++) {
+                if (ingredients[i] != null && !ingredients[i].isEmpty()) {
+                    String measure = "";
+                    if (chosenMeasures != null && i < chosenMeasures.length && chosenMeasures[i] != null) {
+                        measure = chosenMeasures[i].trim();
+                    } else if (measuresOriginal != null && i < measuresOriginal.length && measuresOriginal[i] != null) {
+                        // fallback to original if conversion missing
+                        measure = measuresOriginal[i].trim();
+                    }
+
+                    details.append("• ");
+                    if (!measure.isEmpty()) {
+                        details.append(measure).append(" ");
+                    }
+                    details.append(ingredients[i]).append("\n");
+                }
+            }
+        }
+
+        details.append("\nInstructions:\n").append(recipe.getInstructions());
+        return details.toString();
+    }
+
+
 }
+

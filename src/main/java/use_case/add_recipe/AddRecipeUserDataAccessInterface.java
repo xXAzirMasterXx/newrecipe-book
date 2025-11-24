@@ -1,5 +1,5 @@
 
-package use_case.addRecipe;
+package use_case.add_recipe;
 
 import entity.Recipe;
 

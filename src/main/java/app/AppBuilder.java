@@ -1,19 +1,17 @@
 package app;
 
 import view.LoggedInViewWithAddRecipe;
-import use_case.addRecipe.AddRecipeInputBoundary;
-import use_case.addRecipe.AddRecipeInteractor;
-import use_case.addRecipe.AddRecipeOutputBoundary;
+import use_case.add_recipe.AddRecipeInputBoundary;
+import use_case.add_recipe.AddRecipeInteractor;
+import use_case.add_recipe.AddRecipeOutputBoundary;
 import data_access.AddRecipeInMemoryDataAccessObject;
 import view.AddRecipeView;
 import interface_adapter.addRecipe.AddRecipeController;
 import interface_adapter.addRecipe.AddRecipePresenter;
 import interface_adapter.addRecipe.AddRecipeViewModel;
-import interface_adapter.addRecipe.AddRecipeState;
 import data_access.FileUserDataAccessObject;
 import data_access.RecipeDataAccessObject;
 import entity.UserFactory;
-import entity.Recipe;
 import interface_adapter.ViewManagerModel;
 import interface_adapter.logged_in.ChangePasswordController;
 import interface_adapter.logged_in.ChangePasswordPresenter;
