@@ -10,8 +10,8 @@ public final class UnitConversionUtils {
 
     private static final double TSP_TO_ML = 5.0;
     private static final double TBSP_TO_ML = 15.0;
-    private static final double OZ_TO_G = 28.3495;
-    private static final double LB_TO_G = 453.592;
+    private static final double OZ_TO_G = 28;
+    private static final double LB_TO_G = 454;
 
     private static final Pattern NUMBER_PATTERN =
             Pattern.compile("(\\d+\\s+\\d+/\\d+|\\d+/\\d+|\\d+(?:\\.\\d+)?)");
@@ -34,6 +34,10 @@ public final class UnitConversionUtils {
         return result;
     }
 
+    // =========================
+    // Single-value converters
+    // =========================
+
     private static String convertSingleToMetric(String raw) {
         if (raw == null) return null;
         String s = raw.trim();
@@ -42,34 +46,41 @@ public final class UnitConversionUtils {
         double quantity = extractQuantity(s);
         String lower = s.toLowerCase(Locale.ROOT);
 
+        // tbsp -> mL
         if (containsAny(lower, "tbsp", "tbs", "tablespoon")) {
             double ml = quantity * TBSP_TO_ML;
             return format(ml) + " mL";
         }
 
+        // tsp -> mL
         if (containsAny(lower, "tsp", "teaspoon")) {
             double ml = quantity * TSP_TO_ML;
             return format(ml) + " mL";
         }
 
+        // lb -> g
         if (containsAny(lower, "lb", "pound")) {
             double g = quantity * LB_TO_G;
             return format(g) + " g";
         }
 
+        // oz -> g
         if (containsAny(lower, "oz", "ounce")) {
             double g = quantity * OZ_TO_G;
             return format(g) + " g";
         }
 
-        if (containsAny(lower, "g ", " g", "gram", "grams")) {
+        // already grams -> normalize even if it's "400g chicken"
+        if (isGramUnit(lower)) {
             return normalizeWithNumber(quantity, "g");
         }
 
+        // already mL -> normalize
         if (containsAny(lower, "ml", "milliliter", "millilitre")) {
             return normalizeWithNumber(quantity, "mL");
         }
 
+        // unknown unit: return original
         return raw;
     }
 
@@ -81,6 +92,7 @@ public final class UnitConversionUtils {
         double quantity = extractQuantity(s);
         String lower = s.toLowerCase(Locale.ROOT);
 
+        // already in common imperial units: normalize formatting
         if (containsAny(lower, "tbsp", "tbs", "tablespoon")) {
             return normalizeWithNumber(quantity, "tbsp");
         }
@@ -94,10 +106,16 @@ public final class UnitConversionUtils {
             return normalizeWithNumber(quantity, "oz");
         }
 
-        // grams -> oz (your requirement)
-        if (containsAny(lower, "g ", " g", "gram", "grams")) {
-            double oz = quantity / OZ_TO_G;
-            return format(oz) + " oz";
+        // grams -> lb or oz
+        // Handles "400 g", "400g", "400 g chicken", "400g chicken", "grams"
+        if (isGramUnit(lower)) {
+            if (quantity >= LB_TO_G) {          // >= 1 pound
+                double lb = quantity / LB_TO_G;
+                return format(lb) + " lb";
+            } else {                            // < 1 pound
+                double oz = quantity / OZ_TO_G;
+                return format(oz) + " oz";
+            }
         }
 
         // mL -> tsp / tbsp (simple heuristic)
@@ -111,17 +129,24 @@ public final class UnitConversionUtils {
             }
         }
 
+        // unknown unit: return original
         return raw;
     }
+
+    // =========================
+    // Parsing helpers
+    // =========================
 
     private static double extractQuantity(String s) {
         Matcher m = NUMBER_PATTERN.matcher(s);
         if (!m.find()) {
-            return 1.0; // e.g. "to taste"
+            // default if we can't find a number (e.g., "to taste")
+            return 1.0;
         }
         String numStr = m.group(1).trim();
 
-        if (numStr.contains(" ")) { // "1 1/2"
+        // "1 1/2"
+        if (numStr.contains(" ")) {
             String[] parts = numStr.split("\\s+");
             if (parts.length == 2 && parts[1].contains("/")) {
                 double whole = parseDoubleSafe(parts[0]);
@@ -130,10 +155,12 @@ public final class UnitConversionUtils {
             }
         }
 
-        if (numStr.contains("/")) { // "1/2"
+        // "1/2"
+        if (numStr.contains("/")) {
             return parseFraction(numStr);
         }
 
+        // "1" or "1.5"
         return parseDoubleSafe(numStr);
     }
 
@@ -154,12 +181,35 @@ public final class UnitConversionUtils {
         }
     }
 
+    // =========================
+    // Unit detection helpers
+    // =========================
+
     private static boolean containsAny(String s, String... needles) {
         for (String n : needles) {
             if (s.contains(n)) return true;
         }
         return false;
     }
+
+    /**
+     * Detect if the string uses grams as a unit, including forms like:
+     * "400 g", "400g", "400 g chicken", "400g chicken", "grams", "gram".
+     */
+    private static boolean isGramUnit(String lower) {
+        // "400 g", "400 g chicken"
+        boolean numberSpaceG = lower.matches(".*\\d+\\s*g\\b.*");
+        // "400g", "400g chicken"
+        boolean numberG = lower.matches(".*\\d+g\\b.*");
+        // explicit word usage
+        boolean wordGram = lower.contains("gram");
+
+        return numberSpaceG || numberG || wordGram;
+    }
+
+    // =========================
+    // Formatting helpers
+    // =========================
 
     private static String format(double value) {
         if (Math.abs(value - Math.round(value)) < 1e-6) {
