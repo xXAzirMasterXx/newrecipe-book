@@ -1,10 +1,5 @@
 package app;
 
-import interface_adapter.add_recipes.*;
-import use_case.add_recipes.*;
-import data_access.AddRecipeInMemoryDataAccessObject;
-import view.AddRecipeView;
-import view.LoggedInViewWithAddRecipe;
 import data_access.FileUserDataAccessObject;
 import data_access.RecipeDataAccessObject;
 import entity.UserFactory;
@@ -18,6 +13,7 @@ import interface_adapter.login.LoginPresenter;
 import interface_adapter.login.LoginViewModel;
 import interface_adapter.logout.LogoutController;
 import interface_adapter.logout.LogoutPresenter;
+import interface_adapter.recipe.RecipePresenter;
 import interface_adapter.signup.SignupController;
 import interface_adapter.signup.SignupPresenter;
 import interface_adapter.signup.SignupViewModel;
@@ -98,11 +94,8 @@ public class AppBuilder {
             this.addRecipeUseCase(); // Initialize recipe use case if not already done
         }
 
-        loggedInView = new LoggedInViewWithAddRecipe(
-                loggedInViewModel, recipeViewModel, recipeController, viewManagerModel
-        );
+        loggedInView = new LoggedInView(loggedInViewModel, recipeViewModel, recipeController);
         cardPanel.add(loggedInView, loggedInView.getViewName());
-
         return this;
     }
 
@@ -157,45 +150,16 @@ public class AppBuilder {
     }
 
     public AppBuilder addRecipeUseCase() {
-        // Create use cases
-        SearchRecipesUseCase searchRecipesUseCase = new SearchRecipesUseCase(recipeDataAccess);
-        GetRandomRecipeUseCase getRandomRecipeUseCase = new GetRandomRecipeUseCase(recipeDataAccess);
 
-        // Create controller
+        // 1. Create presenter, connects ViewModel
+        RecipePresenter recipePresenter = new RecipePresenter(recipeViewModel);
+
+        // 2. Create use cases, now they receive presenter
+        SearchRecipesUseCase searchRecipesUseCase = new SearchRecipesUseCase(recipeDataAccess, recipePresenter);
+        GetRandomRecipeUseCase getRandomRecipeUseCase = new GetRandomRecipeUseCase(recipeDataAccess, recipePresenter);
+
+        // 3. Create controller and pass use cases
         recipeController = new RecipeController(searchRecipesUseCase, getRandomRecipeUseCase);
-        return this;
-    }
-
-    public AppBuilder addAddRecipeUseCase() {
-
-        // ==== AddRecipe ViewModel ====
-        AddRecipeViewModel addRecipeViewModel = new AddRecipeViewModel();
-
-        // ==== AddRecipe DAO ====
-        AddRecipeInMemoryDataAccessObject addRecipeDAO =
-                new AddRecipeInMemoryDataAccessObject();
-
-        // ==== Presenter ====
-        AddRecipeOutputBoundary addRecipePresenter =
-                new AddRecipePresenter(addRecipeViewModel, viewManagerModel);
-
-        // ==== Interactor ====
-        AddRecipeInputBoundary addRecipeInteractor =
-                new AddRecipeInteractor(
-                        addRecipeDAO,
-                        addRecipePresenter,
-                        new entity.RecipeFactory()
-                );
-
-        // ==== Controller ====
-        AddRecipeController addRecipeController =
-                new AddRecipeController(addRecipeInteractor);
-
-        // ==== View ====
-        AddRecipeView addRecipeView =
-                new AddRecipeView(addRecipeViewModel, viewManagerModel, addRecipeController);
-
-        cardPanel.add(addRecipeView, addRecipeView.getViewName());
 
         return this;
     }

@@ -1,12 +1,14 @@
 package use_case.recipe;
 
 import entity.Recipe;
+import interface_adapter.recipe.RecipePresenter;
+
 import java.util.List;
 
 public class SearchRecipesUseCase {
     private final RecipeDataAccessInterface recipeDataAccess;
 
-    public SearchRecipesUseCase(RecipeDataAccessInterface recipeDataAccess) {
+    public SearchRecipesUseCase(RecipeDataAccessInterface recipeDataAccess, RecipePresenter recipePresenter) {
         this.recipeDataAccess = recipeDataAccess;
     }
 
