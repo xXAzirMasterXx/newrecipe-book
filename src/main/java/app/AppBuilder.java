@@ -1,5 +1,10 @@
 package app;
 
+import interface_adapter.add_recipes.*;
+import use_case.add_recipes.*;
+import data_access.AddRecipeInMemoryDataAccessObject;
+import view.AddRecipeView;
+import view.LoggedInViewWithAddRecipe;
 import data_access.FileUserDataAccessObject;
 import data_access.RecipeDataAccessObject;
 import entity.UserFactory;
@@ -93,8 +98,11 @@ public class AppBuilder {
             this.addRecipeUseCase(); // Initialize recipe use case if not already done
         }
 
-        loggedInView = new LoggedInView(loggedInViewModel, recipeViewModel, recipeController);
+        loggedInView = new LoggedInViewWithAddRecipe(
+                loggedInViewModel, recipeViewModel, recipeController, viewManagerModel
+        );
         cardPanel.add(loggedInView, loggedInView.getViewName());
+
         return this;
     }
 
@@ -157,6 +165,41 @@ public class AppBuilder {
         recipeController = new RecipeController(searchRecipesUseCase, getRandomRecipeUseCase);
         return this;
     }
+
+    public AppBuilder addAddRecipeUseCase() {
+
+        // ==== AddRecipe ViewModel ====
+        AddRecipeViewModel addRecipeViewModel = new AddRecipeViewModel();
+
+        // ==== AddRecipe DAO ====
+        AddRecipeInMemoryDataAccessObject addRecipeDAO =
+                new AddRecipeInMemoryDataAccessObject();
+
+        // ==== Presenter ====
+        AddRecipeOutputBoundary addRecipePresenter =
+                new AddRecipePresenter(addRecipeViewModel, viewManagerModel);
+
+        // ==== Interactor ====
+        AddRecipeInputBoundary addRecipeInteractor =
+                new AddRecipeInteractor(
+                        addRecipeDAO,
+                        addRecipePresenter,
+                        new entity.RecipeFactory()
+                );
+
+        // ==== Controller ====
+        AddRecipeController addRecipeController =
+                new AddRecipeController(addRecipeInteractor);
+
+        // ==== View ====
+        AddRecipeView addRecipeView =
+                new AddRecipeView(addRecipeViewModel, viewManagerModel, addRecipeController);
+
+        cardPanel.add(addRecipeView, addRecipeView.getViewName());
+
+        return this;
+    }
+
 
     public JFrame build() {
         final JFrame application = new JFrame("User Login Example");
