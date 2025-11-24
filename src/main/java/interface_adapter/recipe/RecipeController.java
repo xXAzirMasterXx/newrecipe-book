@@ -1,6 +1,5 @@
 package interface_adapter.recipe;
 
-
 import use_case.recipe.SearchRecipesUseCase;
 import use_case.recipe.GetRandomRecipeUseCase;
 import entity.Recipe;
@@ -8,6 +7,7 @@ import java.util.List;
 import java.util.Optional;
 
 public class RecipeController {
+
     private final SearchRecipesUseCase searchRecipesUseCase;
     private final GetRandomRecipeUseCase getRandomRecipeUseCase;
 

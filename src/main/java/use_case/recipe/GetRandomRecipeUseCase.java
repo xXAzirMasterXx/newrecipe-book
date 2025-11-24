@@ -1,12 +1,14 @@
 package use_case.recipe;
 
 import entity.Recipe;
+import interface_adapter.recipe.RecipePresenter;
+
 import java.util.Optional;
 
 public class GetRandomRecipeUseCase {
     private final RecipeDataAccessInterface recipeDataAccess;
 
-    public GetRandomRecipeUseCase(RecipeDataAccessInterface recipeDataAccess) {
+    public GetRandomRecipeUseCase(RecipeDataAccessInterface recipeDataAccess, RecipePresenter recipePresenter) {
         this.recipeDataAccess = recipeDataAccess;
     }
 
