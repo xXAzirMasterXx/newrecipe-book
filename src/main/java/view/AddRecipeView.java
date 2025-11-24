@@ -1,9 +1,9 @@
 package view;
 
 import interface_adapter.ViewManagerModel;
-import interface_adapter.add_recipes.AddRecipeController;
-import interface_adapter.add_recipes.AddRecipeState;
-import interface_adapter.add_recipes.AddRecipeViewModel;
+import interface_adapter.addRecipe.AddRecipeController;
+import interface_adapter.addRecipe.AddRecipeState;
+import interface_adapter.addRecipe.AddRecipeViewModel;
 
 import javax.swing.*;
 import java.awt.*;

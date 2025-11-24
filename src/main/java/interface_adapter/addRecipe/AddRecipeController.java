@@ -1,7 +1,7 @@
-package interface_adapter.add_recipes;
+package interface_adapter.addRecipe;
 
-import use_case.add_recipes.AddRecipeInputBoundary;
-import use_case.add_recipes.AddRecipeInputData;
+import use_case.addRecipe.AddRecipeInputBoundary;
+import use_case.addRecipe.AddRecipeInputData;
 
 public class AddRecipeController {
 

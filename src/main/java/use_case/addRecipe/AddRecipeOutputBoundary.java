@@ -1,5 +1,5 @@
 
-package use_case.add_recipes;
+package use_case.addRecipe;
 
 public interface AddRecipeOutputBoundary {
     void prepareSuccessView(AddRecipeOutputData outputData);
