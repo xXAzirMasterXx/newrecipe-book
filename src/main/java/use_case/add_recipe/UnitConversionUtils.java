@@ -1,4 +1,4 @@
-package use_case.add_recipes;
+package use_case.add_recipe;
 
 import java.util.Locale;
 import java.util.regex.Matcher;

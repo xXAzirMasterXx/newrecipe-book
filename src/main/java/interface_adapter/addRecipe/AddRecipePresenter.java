@@ -1,8 +1,8 @@
-package interface_adapter.add_recipes;
+package interface_adapter.addRecipe;
 
 import interface_adapter.ViewManagerModel;
-import use_case.add_recipes.AddRecipeOutputBoundary;
-import use_case.add_recipes.AddRecipeOutputData;
+import use_case.add_recipe.AddRecipeOutputBoundary;
+import use_case.add_recipe.AddRecipeOutputData;
 
 public class AddRecipePresenter implements AddRecipeOutputBoundary {
 

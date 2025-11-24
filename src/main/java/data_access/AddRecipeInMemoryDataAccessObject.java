@@ -1,7 +1,7 @@
 package data_access;
 
 import entity.Recipe;
-import use_case.add_recipes.AddRecipeUserDataAccessInterface;
+import use_case.add_recipe.AddRecipeUserDataAccessInterface;
 
 import java.util.HashMap;
 import java.util.Map;

@@ -1,4 +1,4 @@
-package use_case.add_recipes;
+package use_case.add_recipe;
 
 import entity.Recipe;
 import entity.RecipeFactory;

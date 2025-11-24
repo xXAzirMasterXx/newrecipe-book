@@ -1,4 +1,4 @@
-package interface_adapter.add_recipes;
+package interface_adapter.addRecipe;
 
 import interface_adapter.ViewModel;
 
