@@ -27,9 +27,7 @@ import use_case.login.LoginInteractor;
 import use_case.login.LoginOutputBoundary;
 import use_case.logout.LogoutInputBoundary;
 import use_case.logout.LogoutInteractor;
-import use_case.recipe.GetRandomRecipeUseCase;
-import use_case.recipe.RecipeDataAccessInterface;
-import use_case.recipe.SearchRecipesUseCase;
+import use_case.recipe.*;
 import use_case.logout.LogoutOutputBoundary;
 import use_case.signup.SignupInputBoundary;
 import use_case.signup.SignupInteractor;
@@ -151,18 +149,26 @@ public class AppBuilder {
 
     public AppBuilder addRecipeUseCase() {
 
-        // 1. Create presenter, connects ViewModel
+        // 1. Create presenter
         RecipePresenter recipePresenter = new RecipePresenter(recipeViewModel);
 
-        // 2. Create use cases, now they receive presenter
+        // 2. Create use cases
         SearchRecipesUseCase searchRecipesUseCase = new SearchRecipesUseCase(recipeDataAccess, recipePresenter);
         GetRandomRecipeUseCase getRandomRecipeUseCase = new GetRandomRecipeUseCase(recipeDataAccess, recipePresenter);
+        GetAreasUseCase getAreasUseCase = new GetAreasUseCase(recipeDataAccess, recipePresenter);
+        GetCategoriesUseCase getCategoriesUseCase = new GetCategoriesUseCase(recipeDataAccess, recipePresenter);
 
-        // 3. Create controller and pass use cases
-        recipeController = new RecipeController(searchRecipesUseCase, getRandomRecipeUseCase);
+        // 3. Create controller with all required dependencies
+        recipeController = new RecipeController(
+                searchRecipesUseCase,
+                getRandomRecipeUseCase,
+                getAreasUseCase,
+                getCategoriesUseCase
+        );
 
         return this;
     }
+
 
 
     public JFrame build() {

@@ -71,27 +71,76 @@ public class RecipeDataAccessObject implements RecipeDataAccessInterface {
 
     @Override
     public List<String> getAllCategories() {
+        List<String> result = new ArrayList<>();
+
         try {
-            String urlString = API_BASE_URL + "list.php?c=list";
-            JSONObject response = makeApiCall(urlString);
-            return parseStringListFromResponse(response, "strCategory");
+            URL url = new URL("https://www.themealdb.com/api/json/v1/1/list.php?c=list");
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("GET");
+
+            BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+            StringBuilder response = new StringBuilder();
+            String line;
+
+            while ((line = reader.readLine()) != null) {
+                response.append(line);
+            }
+
+            reader.close();
+            connection.disconnect();
+
+            // Parse JSON
+            JSONObject json = new JSONObject(response.toString());
+            JSONArray mealsArray = json.getJSONArray("meals");
+
+            for (int i = 0; i < mealsArray.length(); i++) {
+                result.add(mealsArray.getJSONObject(i).getString("strCategory"));
+            }
+
         } catch (Exception e) {
-            System.err.println("Error getting categories: " + e.getMessage());
-            return new ArrayList<>();
+            System.err.println("ERROR loading categories: " + e.getMessage());
         }
+
+        return result;
     }
+
 
     @Override
     public List<String> getAllAreas() {
+        List<String> result = new ArrayList<>();
+
         try {
-            String urlString = API_BASE_URL + "list.php?a=list";
-            JSONObject response = makeApiCall(urlString);
-            return parseStringListFromResponse(response, "strArea");
+            URL url = new URL("https://www.themealdb.com/api/json/v1/1/list.php?a=list");
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("GET");
+
+            BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+            StringBuilder response = new StringBuilder();
+            String line;
+
+            while ((line = reader.readLine()) != null) {
+                response.append(line);
+            }
+
+            reader.close();
+            connection.disconnect();
+
+            // Parse JSON
+            JSONObject json = new JSONObject(response.toString());
+            JSONArray mealsArray = json.getJSONArray("meals");
+
+            for (int i = 0; i < mealsArray.length(); i++) {
+                result.add(mealsArray.getJSONObject(i).getString("strArea"));
+            }
+
         } catch (Exception e) {
-            System.err.println("Error getting areas: " + e.getMessage());
-            return new ArrayList<>();
+            System.err.println("ERROR loading areas: " + e.getMessage());
         }
+
+        return result;
     }
+
+
 
     @Override
     public Optional<Recipe> getRandomRecipe() {

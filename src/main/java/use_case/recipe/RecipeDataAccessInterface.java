@@ -33,4 +33,5 @@ public interface RecipeDataAccessInterface {
 
     // Search recipes by first letter
     List<Recipe> searchRecipesByFirstLetter(char letter);
+
 }
