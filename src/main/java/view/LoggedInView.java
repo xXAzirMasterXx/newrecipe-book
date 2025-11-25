@@ -37,6 +37,9 @@ public class LoggedInView extends JPanel implements ActionListener, PropertyChan
     private ChangePasswordController changePasswordController = null;
     private LogoutController logoutController;
     private RecipeController recipeController;
+    private JComboBox<String> categoryDropdown;
+    private JComboBox<String> areaDropdown;
+
 
     private final JLabel username;
 
@@ -60,6 +63,10 @@ public class LoggedInView extends JPanel implements ActionListener, PropertyChan
         this.loggedInViewModel.addPropertyChangeListener(this);
         this.recipeViewModel.addPropertyChangeListener(this);
 
+        // Create dropdown BEFORE adding to panel
+        categoryDropdown = new JComboBox<>();
+        areaDropdown = new JComboBox<>();
+
         final JLabel title = new JLabel("Recipe Explorer");
         title.setAlignmentX(Component.CENTER_ALIGNMENT);
         title.setFont(new Font("Arial", Font.BOLD, 18));
@@ -67,14 +74,26 @@ public class LoggedInView extends JPanel implements ActionListener, PropertyChan
         // Recipe Search Section
         final JPanel searchPanel = new JPanel();
         searchPanel.setBorder(BorderFactory.createTitledBorder("Recipe Search"));
-        searchPanel.add(new JLabel("Search:"));
-        searchPanel.add(searchField);
-        searchPanel.add(searchButton);
-        searchPanel.add(randomButton);
+        searchPanel.setLayout(new BoxLayout(searchPanel, BoxLayout.Y_AXIS));
 
-        // Favorites button
+        JPanel row1 = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        row1.add(new JLabel("Search:"));
+        row1.add(searchField);
+        row1.add(searchButton);
+        row1.add(randomButton);
+        searchPanel.add(row1);
+
+        JPanel row2 = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        row2.add(new JLabel("Category:"));
+        row2.add(categoryDropdown);
+        row2.add(new JLabel("Area:"));
+        row2.add(areaDropdown);
+        searchPanel.add(row2);
+
+        JPanel row3 = new JPanel(new FlowLayout(FlowLayout.CENTER));
         final JButton favoritesButton = new JButton("My Favorites");
-        searchPanel.add(favoritesButton);
+        row3.add(favoritesButton);
+        searchPanel.add(row3);
 
         // Results Panel
         resultsPanel.setLayout(new BoxLayout(resultsPanel, BoxLayout.Y_AXIS));
@@ -168,6 +187,29 @@ public class LoggedInView extends JPanel implements ActionListener, PropertyChan
         this.add(statusLabel);
         this.add(Box.createRigidArea(new Dimension(0, 10))); // Spacer
         this.add(userPanel);
+        // auto-load categories and areas after UI loads
+        new Thread(() -> {
+            recipeController.loadCategories();
+            recipeController.loadAreas();
+        }).start();
+
+        categoryDropdown.addActionListener(e -> {
+            String selected = (String) categoryDropdown.getSelectedItem();
+            if (selected != null && !selected.isBlank()) {
+                searchField.setText(selected);
+                performSearch();
+            }
+        });
+
+        areaDropdown.addActionListener(e -> {
+            String selected = (String) areaDropdown.getSelectedItem();
+            if (selected != null && !selected.isBlank()) {
+                searchField.setText(selected);
+                performSearch();
+            }
+        });
+
+
     }
 
     private void performSearch() {
@@ -245,40 +287,40 @@ public class LoggedInView extends JPanel implements ActionListener, PropertyChan
     }
 
     private JPanel createRecipePanel(Recipe recipe) {
-    JPanel panel = new JPanel(new BorderLayout());
-    panel.setBorder(BorderFactory.createEtchedBorder());
-    panel.setBackground(Color.WHITE);
-      
-    boolean isFav = FavoriteManager.getInstance().isFavorite(recipe.getId());
-    String displayName = recipe.getName();
-    if (isFav) {
-        displayName = "FAV: " + displayName;
-    }
-    JLabel nameLabel = new JLabel(displayName);
-    nameLabel.setFont(new Font("Arial", Font.BOLD, 14));
-    if (isFav) {
-        nameLabel.setForeground(new Color(0, 100, 0));
-    }
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBorder(BorderFactory.createEtchedBorder());
+        panel.setBackground(Color.WHITE);
 
-    JLabel imageLabel = new JLabel();
-    imageLabel.setHorizontalAlignment(SwingConstants.CENTER);
-    imageLabel.setVerticalAlignment(SwingConstants.CENTER);
-    imageLabel.setPreferredSize(new Dimension(200, 200));
+        boolean isFav = FavoriteManager.getInstance().isFavorite(recipe.getId());
+        String displayName = recipe.getName();
+        if (isFav) {
+            displayName = "FAV: " + displayName;
+        }
+        JLabel nameLabel = new JLabel(displayName);
+        nameLabel.setFont(new Font("Arial", Font.BOLD, 14));
+        if (isFav) {
+            nameLabel.setForeground(new Color(0, 100, 0));
+        }
 
-    String imageUrl = recipe.getImageUrl();
-    if (imageUrl != null && !imageUrl.isEmpty()) {
-        new Thread(() -> {
-            try {
-                URL url = new URL(imageUrl);
-                ImageIcon icon = new ImageIcon(url);
-                Image scaled = icon.getImage().getScaledInstance(200, 200, Image.SCALE_SMOOTH);
-                ImageIcon scaledIcon = new ImageIcon(scaled);
-                SwingUtilities.invokeLater(() -> imageLabel.setIcon(scaledIcon));
-            } catch (Exception ex) {
-                System.err.println("Failed to load image for recipe " + recipe.getName() + ": " + ex.getMessage());
-            }
-        }).start();
-    }
+        JLabel imageLabel = new JLabel();
+        imageLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        imageLabel.setVerticalAlignment(SwingConstants.CENTER);
+        imageLabel.setPreferredSize(new Dimension(200, 200));
+
+        String imageUrl = recipe.getImageUrl();
+        if (imageUrl != null && !imageUrl.isEmpty()) {
+            new Thread(() -> {
+                try {
+                    URL url = new URL(imageUrl);
+                    ImageIcon icon = new ImageIcon(url);
+                    Image scaled = icon.getImage().getScaledInstance(200, 200, Image.SCALE_SMOOTH);
+                    ImageIcon scaledIcon = new ImageIcon(scaled);
+                    SwingUtilities.invokeLater(() -> imageLabel.setIcon(scaledIcon));
+                } catch (Exception ex) {
+                    System.err.println("Failed to load image for recipe " + recipe.getName() + ": " + ex.getMessage());
+                }
+            }).start();
+        }
 
         // Details text
         JTextArea detailsArea = new JTextArea(
@@ -320,15 +362,31 @@ public class LoggedInView extends JPanel implements ActionListener, PropertyChan
         // Cache this recipe when viewing details
         FavoriteManager.getInstance().cacheRecipe(recipe);
 
-        // Text area for recipe details
-        final JTextArea textArea = new JTextArea();
+        // Build the text details
+        StringBuilder details = new StringBuilder();
+        details.append("Name: ").append(recipe.getName()).append("\n\n");
+        details.append("Category: ").append(recipe.getCategory()).append("\n");
+        details.append("Cuisine: ").append(recipe.getArea()).append("\n\n");
+        details.append("Ingredients:\n");
+
+        String[] ingredients = recipe.getIngredients();
+        String[] measures = recipe.getMeasures();
+        for (int i = 0; i < ingredients.length; i++) {
+            if (ingredients[i] != null && !ingredients[i].isEmpty()) {
+                details.append("• ")
+                        .append(measures[i] != null ? measures[i] : "")
+                        .append(" ")
+                        .append(ingredients[i])
+                        .append("\n");
+            }
+        }
+
+        details.append("\nInstructions:\n").append(recipe.getInstructions());
+
+        JTextArea textArea = new JTextArea(details.toString());
         textArea.setEditable(false);
         textArea.setLineWrap(true);
         textArea.setWrapStyleWord(true);
-
-        // Start in METRIC by default (you can change to ORIGINAL/IMPERIAL if you prefer)
-        final UnitSystem[] currentUnit = new UnitSystem[]{UnitSystem.METRIC};
-        textArea.setText(buildRecipeDetailsText(recipe, currentUnit[0]));
 
         JScrollPane scrollPane = new JScrollPane(textArea);
         scrollPane.setPreferredSize(new Dimension(500, 300));
@@ -357,7 +415,7 @@ public class LoggedInView extends JPanel implements ActionListener, PropertyChan
             }).start();
         }
 
-        // Favorite button
+        // Add favorite button
         JButton favoriteButton = new JButton("☆ Favorite");
         favoriteButton.addActionListener(e -> {
             boolean isNowFavorite = FavoriteManager.getInstance().toggleFavorite(recipe.getId());
@@ -373,36 +431,18 @@ public class LoggedInView extends JPanel implements ActionListener, PropertyChan
             refreshRecipeDisplay();
         });
 
-        // **Unit toggle button** – goes to the LEFT of favoriteButton
-        JButton unitToggleButton = new JButton("Show Imperial");
-        unitToggleButton.addActionListener(e -> {
-            if (currentUnit[0] == UnitSystem.METRIC) {
-                currentUnit[0] = UnitSystem.IMPERIAL;
-                unitToggleButton.setText("Show Metric");
-            } else {
-                currentUnit[0] = UnitSystem.METRIC;
-                unitToggleButton.setText("Show Imperial");
-            }
-            textArea.setText(buildRecipeDetailsText(recipe, currentUnit[0]));
-            textArea.setCaretPosition(0); // scroll back to top on change
-        });
-
-        // Button panel: toggle on the left, favorite on the right
+        // Create a panel for the button
         JPanel buttonPanel = new JPanel();
-        buttonPanel.add(unitToggleButton); // left
-        buttonPanel.add(favoriteButton);   // right
+        buttonPanel.add(favoriteButton);
 
-        // Main panel with image + text + buttons
+        // Create main panel with image + text + favorite button
         JPanel mainPanel = new JPanel(new BorderLayout());
         mainPanel.add(imageLabel, BorderLayout.NORTH);
         mainPanel.add(scrollPane, BorderLayout.CENTER);
         mainPanel.add(buttonPanel, BorderLayout.SOUTH);
 
-        JOptionPane.showMessageDialog(this, mainPanel,
-                "Recipe Details: " + recipe.getName(),
-                JOptionPane.INFORMATION_MESSAGE);
+        JOptionPane.showMessageDialog(this, mainPanel, "Recipe Details: " + recipe.getName(), JOptionPane.INFORMATION_MESSAGE);
     }
-
 
     private void refreshRecipeDisplay() {
         System.out.println("DEBUG: refreshRecipeDisplay called");
@@ -525,6 +565,24 @@ public class LoggedInView extends JPanel implements ActionListener, PropertyChan
         // Handle RecipeViewModel changes
         else if (evt.getSource() == recipeViewModel) {
             switch (evt.getPropertyName()) {
+                case RecipeViewModel.CATEGORY_PROPERTY:
+                    categoryDropdown.removeAllItems();
+                    categoryDropdown.addItem(""); // optional placeholder
+                    for (String cat : recipeViewModel.getCategoryOptions()) {
+                        categoryDropdown.addItem(cat);
+                    }
+                    statusLabel.setText("Categories loaded.");
+                    break;
+
+                case RecipeViewModel.AREA_PROPERTY:
+                    areaDropdown.removeAllItems();
+                    areaDropdown.addItem("");
+                    for (String area : recipeViewModel.getAreaOptions()) {
+                        areaDropdown.addItem(area);
+                    }
+                    statusLabel.setText("Areas loaded.");
+                    break;
+
                 case RecipeViewModel.RECIPES_PROPERTY:
                     displayRecipes(recipeViewModel.getRecipes());
                     break;
@@ -555,59 +613,4 @@ public class LoggedInView extends JPanel implements ActionListener, PropertyChan
     public void setLogoutController(LogoutController logoutController) {
         this.logoutController = logoutController;
     }
-
-    private enum UnitSystem {
-        METRIC,
-        IMPERIAL
-    }
-
-
-    private String buildRecipeDetailsText(Recipe recipe, UnitSystem unitSystem) {
-        StringBuilder details = new StringBuilder();
-        details.append("Name: ").append(recipe.getName()).append("\n\n");
-        details.append("Category: ").append(recipe.getCategory()).append("\n");
-        details.append("Cuisine: ").append(recipe.getArea()).append("\n\n");
-
-        String unitLabel = (unitSystem == UnitSystem.METRIC)
-                ? "Metric (g / mL where possible)"
-                : "Imperial (oz / tbsp / tsp / lb where possible)";
-
-        details.append("Ingredients (").append(unitLabel).append("):\n");
-
-        String[] ingredients = recipe.getIngredients();
-        String[] measuresOriginal = recipe.getMeasures();
-
-        String[] measuresMetric = UnitConversionUtils.toMetric(measuresOriginal);
-        String[] measuresImperial = UnitConversionUtils.toImperial(measuresOriginal);
-
-        String[] chosenMeasures = (unitSystem == UnitSystem.METRIC)
-                ? measuresMetric
-                : measuresImperial;
-
-        if (ingredients != null) {
-            for (int i = 0; i < ingredients.length; i++) {
-                if (ingredients[i] != null && !ingredients[i].isEmpty()) {
-                    String measure = "";
-                    if (chosenMeasures != null && i < chosenMeasures.length && chosenMeasures[i] != null) {
-                        measure = chosenMeasures[i].trim();
-                    } else if (measuresOriginal != null && i < measuresOriginal.length && measuresOriginal[i] != null) {
-                        // fallback to original if conversion missing
-                        measure = measuresOriginal[i].trim();
-                    }
-
-                    details.append("• ");
-                    if (!measure.isEmpty()) {
-                        details.append(measure).append(" ");
-                    }
-                    details.append(ingredients[i]).append("\n");
-                }
-            }
-        }
-
-        details.append("\nInstructions:\n").append(recipe.getInstructions());
-        return details.toString();
-    }
-
-
 }
-
