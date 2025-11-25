@@ -22,9 +22,11 @@ import java.beans.PropertyChangeListener;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Set;
-import java.util.HashSet;
 import java.net.URL;
 import java.awt.Image;
+import use_case.add_recipe.UnitConversionUtils;
+
+
 
 public class LoggedInView extends JPanel implements ActionListener, PropertyChangeListener {
 

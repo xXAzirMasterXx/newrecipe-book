@@ -1,9 +1,17 @@
 package app;
 
+import view.LoggedInViewWithAddRecipe;
+import use_case.add_recipe.AddRecipeInputBoundary;
+import use_case.add_recipe.AddRecipeInteractor;
+import use_case.add_recipe.AddRecipeOutputBoundary;
+import data_access.AddRecipeInMemoryDataAccessObject;
+import view.AddRecipeView;
+import interface_adapter.addRecipe.AddRecipeController;
+import interface_adapter.addRecipe.AddRecipePresenter;
+import interface_adapter.addRecipe.AddRecipeViewModel;
 import data_access.FileUserDataAccessObject;
 import data_access.RecipeDataAccessObject;
 import entity.UserFactory;
-import entity.Recipe;
 import interface_adapter.ViewManagerModel;
 import interface_adapter.logged_in.ChangePasswordController;
 import interface_adapter.logged_in.ChangePasswordPresenter;
@@ -89,13 +97,20 @@ public class AppBuilder {
         loggedInViewModel = new LoggedInViewModel();
 
         if (recipeController == null) {
-            this.addRecipeUseCase(); // Initialize recipe use case if not already done
+            this.addRecipeUseCase();
         }
 
-        loggedInView = new LoggedInView(loggedInViewModel, recipeViewModel, recipeController);
+        loggedInView = new LoggedInViewWithAddRecipe(
+                loggedInViewModel,
+                recipeViewModel,
+                recipeController,
+                viewManagerModel
+        );
+
         cardPanel.add(loggedInView, loggedInView.getViewName());
         return this;
     }
+
 
     public AppBuilder addSignupUseCase() {
         final SignupOutputBoundary signupOutputBoundary = new SignupPresenter(viewManagerModel,
@@ -165,6 +180,39 @@ public class AppBuilder {
                 getAreasUseCase,
                 getCategoriesUseCase
         );
+
+        return this;
+    }
+    public AppBuilder addAddRecipeUseCase() {
+
+        // ==== AddRecipe ViewModel ====
+        AddRecipeViewModel addRecipeViewModel = new AddRecipeViewModel();
+
+        // ==== AddRecipe DAO ====
+        AddRecipeInMemoryDataAccessObject addRecipeDAO =
+                new AddRecipeInMemoryDataAccessObject();
+
+        // ==== Presenter ====
+        AddRecipeOutputBoundary addRecipePresenter =
+                new AddRecipePresenter(addRecipeViewModel, viewManagerModel);
+
+        // ==== Interactor ====
+        AddRecipeInputBoundary addRecipeInteractor =
+                new AddRecipeInteractor(
+                        addRecipeDAO,
+                        addRecipePresenter,
+                        new entity.RecipeFactory()
+                );
+
+        // ==== Controller ====
+        AddRecipeController addRecipeController =
+                new AddRecipeController(addRecipeInteractor);
+
+        // ==== View ====
+        AddRecipeView addRecipeView =
+                new AddRecipeView(addRecipeViewModel, viewManagerModel, addRecipeController);
+
+        cardPanel.add(addRecipeView, addRecipeView.getViewName());
 
         return this;
     }
