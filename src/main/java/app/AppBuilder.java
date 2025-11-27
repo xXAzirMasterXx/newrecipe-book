@@ -1,5 +1,10 @@
 package app;
 
+import interface_adapter.my_recipes.MyRecipesController;
+import interface_adapter.my_recipes.MyRecipesPresenter;
+import interface_adapter.my_recipes.MyRecipesState;
+import interface_adapter.my_recipes.MyRecipesViewModel;
+
 import view.LoggedInViewWithAddRecipe;
 import use_case.add_recipe.AddRecipeInputBoundary;
 import use_case.add_recipe.AddRecipeInteractor;
@@ -40,10 +45,14 @@ import use_case.logout.LogoutOutputBoundary;
 import use_case.signup.SignupInputBoundary;
 import use_case.signup.SignupInteractor;
 import use_case.signup.SignupOutputBoundary;
+import use_case.my_recipes.MyRecipesInputBoundary;
+import use_case.my_recipes.MyRecipesInteractor;
+import use_case.my_recipes.MyRecipesOutputBoundary;
 import view.LoggedInView;
 import view.LoginView;
 import view.SignupView;
 import view.ViewManager;
+import view.MyRecipesView;
 
 import javax.swing.*;
 import java.awt.*;
@@ -51,6 +60,8 @@ import java.awt.*;
 public class AppBuilder {
     private final JPanel cardPanel = new JPanel();
     private final CardLayout cardLayout = new CardLayout();
+    private final AddRecipeInMemoryDataAccessObject addRecipeDAO =
+            new AddRecipeInMemoryDataAccessObject();
     final UserFactory userFactory = new UserFactory();
     final ViewManagerModel viewManagerModel = new ViewManagerModel();
     ViewManager viewManager = new ViewManager(cardPanel, cardLayout, viewManagerModel);
@@ -70,8 +81,10 @@ public class AppBuilder {
     private SignupViewModel signupViewModel;
     private LoginViewModel loginViewModel;
     private LoggedInViewModel loggedInViewModel;
-    private LoggedInView loggedInView;
+    private LoggedInViewWithAddRecipe loggedInView;;
     private LoginView loginView;
+    private MyRecipesViewModel myRecipesViewModel;
+    private MyRecipesController myRecipesController;
 
     private RecipeController recipeController;
 
@@ -188,15 +201,11 @@ public class AppBuilder {
         // ==== AddRecipe ViewModel ====
         AddRecipeViewModel addRecipeViewModel = new AddRecipeViewModel();
 
-        // ==== AddRecipe DAO ====
-        AddRecipeInMemoryDataAccessObject addRecipeDAO =
-                new AddRecipeInMemoryDataAccessObject();
-
         // ==== Presenter ====
         AddRecipeOutputBoundary addRecipePresenter =
                 new AddRecipePresenter(addRecipeViewModel, viewManagerModel);
 
-        // ==== Interactor ====
+        // ==== Interactor ====   —— 这里用字段 addRecipeDAO，而不是 new
         AddRecipeInputBoundary addRecipeInteractor =
                 new AddRecipeInteractor(
                         addRecipeDAO,
@@ -213,6 +222,37 @@ public class AppBuilder {
                 new AddRecipeView(addRecipeViewModel, viewManagerModel, addRecipeController);
 
         cardPanel.add(addRecipeView, addRecipeView.getViewName());
+
+        return this;
+    }
+
+    public AppBuilder addMyRecipesView() {
+
+        // 1. ViewModel
+        myRecipesViewModel = new MyRecipesViewModel();
+
+        // 2. Presenter
+        MyRecipesOutputBoundary presenter =
+                new MyRecipesPresenter(myRecipesViewModel, viewManagerModel);
+
+        // 3. Interactor
+        MyRecipesInputBoundary interactor =
+                new MyRecipesInteractor(addRecipeDAO, presenter);
+
+        // 4. Controller → 保存到字段（给 LoggedInView 使用）
+        myRecipesController = new MyRecipesController(interactor);
+
+        // ★★ 关键：把 controller 传给 LoggedInViewWithAddRecipe
+        if (loggedInView != null) {
+            loggedInView.setMyRecipesController(myRecipesController);
+        }
+
+        // 5. View（必须传 viewModel + viewManagerModel）
+        MyRecipesView myRecipesView =
+                new MyRecipesView(myRecipesViewModel, viewManagerModel);
+
+        // 6. 注册到 CardLayout
+        cardPanel.add(myRecipesView, myRecipesView.getViewName());
 
         return this;
     }
