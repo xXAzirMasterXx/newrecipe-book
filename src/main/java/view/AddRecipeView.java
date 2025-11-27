@@ -41,7 +41,7 @@ public class AddRecipeView extends JPanel implements PropertyChangeListener {
         add(new JScrollPane(measures));
         add(new JLabel("Instructions"));
         add(new JScrollPane(instructions));
-        add(new JLabel("Cooking time"));
+        add(new JLabel("Cooking time (num in minutes)"));
         add(cookingTime);
 
         JPanel btns = new JPanel();

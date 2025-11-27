@@ -15,6 +15,7 @@ public class Main {
                 .addLogoutUseCase()
                 .addRecipeUseCase()
                 .addAddRecipeUseCase()
+                .addMyRecipesView()
                 .build();
 
         application.pack();

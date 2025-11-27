@@ -74,6 +74,8 @@ public class AddRecipeInteractor implements AddRecipeInputBoundary {
                 inputData.getMeasures()
         );
 
+        recipe.setCookingTime(cookingTime);
+
         // 5. Save
         recipeDataAccess.save(recipe);
 
