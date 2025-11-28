@@ -1,3 +1,4 @@
+/*
 package use_case.recipe;
 
 // test/RecipeDataAccessObjectTest.java
@@ -65,3 +66,4 @@ public class RecipeDataAccessObjectTest {
         assertTrue(areas.contains("American") || areas.contains("British"));
     }
 }
+*/

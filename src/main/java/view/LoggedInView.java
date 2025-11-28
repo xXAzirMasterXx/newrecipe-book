@@ -1,9 +1,13 @@
 package view;
 
+import interface_adapter.ingredient_inventory.IngredientInventoryController;
+import interface_adapter.ingredient_inventory.IngredientInventoryState;
 import interface_adapter.logged_in.ChangePasswordController;
 import interface_adapter.logged_in.LoggedInState;
 import interface_adapter.logged_in.LoggedInViewModel;
 import interface_adapter.logout.LogoutController;
+import interface_adapter.add_ingredients.AddIngredientController;
+import interface_adapter.remove_ingredients.RemoveIngredientController;
 
 // Recipe-related imports
 import interface_adapter.recipe.RecipeController;
@@ -37,6 +41,7 @@ public class LoggedInView extends JPanel implements ActionListener, PropertyChan
     private final String viewName = "logged in";
     private final LoggedInViewModel loggedInViewModel;
     private final RecipeViewModel recipeViewModel;
+    private final IngredientInventoryState ingredientInventoryState;
     private final JLabel passwordErrorField = new JLabel();
     private ChangePasswordController changePasswordController = null;
     private LogoutController logoutController;
@@ -49,6 +54,9 @@ public class LoggedInView extends JPanel implements ActionListener, PropertyChan
 
 
 
+    private IngredientInventoryController ingredientInventoryController;
+    private AddIngredientController addIngredientController;
+    private RemoveIngredientController removeIngredientController;
 
     private final JLabel username;
 
@@ -56,21 +64,30 @@ public class LoggedInView extends JPanel implements ActionListener, PropertyChan
     private final JTextField searchField = new JTextField(20);
     private final JButton searchButton = new JButton("Search Recipes");
     private final JButton randomButton = new JButton("Random Recipe");
+    private final JButton ingredientButton = new JButton("Ingredient View");
     private final JPanel resultsPanel = new JPanel();
     private final JLabel statusLabel = new JLabel("Welcome! Search for recipes or get a random one.");
 
-    // Original components
+    private final JTextField addIngredientField = new JTextField(15);
+    private final JButton addIngredientButton = new JButton("Add Ingredient");
+
+    private final JTextField removeIngredientField = new JTextField(15);
+    private final JButton removeIngredientButton = new JButton("Remove Ingredient");
+
     private final JButton logOut;
     private final JTextField passwordInputField = new JTextField(15);
     private final JButton changePassword;
 
-    public LoggedInView(LoggedInViewModel loggedInViewModel, RecipeViewModel recipeViewModel, RecipeController recipeController) {
+    public LoggedInView(LoggedInViewModel loggedInViewModel, RecipeViewModel recipeViewModel, RecipeController recipeController, IngredientInventoryState ingredientInventoryState, IngredientInventoryController ingredientInventoryController) {
         this.loggedInViewModel = loggedInViewModel;
         this.recipeViewModel = recipeViewModel;
         this.recipeController = recipeController;
+        this.ingredientInventoryState = ingredientInventoryState;
+        this.ingredientInventoryController = ingredientInventoryController;
 
         this.loggedInViewModel.addPropertyChangeListener(this);
         this.recipeViewModel.addPropertyChangeListener(this);
+        this.ingredientInventoryState.addPropertyChangeListener(this);
 
         // Create dropdown BEFORE adding to panel
         categoryDropdown = new JComboBox<>();
@@ -90,6 +107,7 @@ public class LoggedInView extends JPanel implements ActionListener, PropertyChan
         row1.add(searchField);
         row1.add(searchButton);
         row1.add(randomButton);
+        row1.add(ingredientButton);
         searchPanel.add(row1);
 
         JPanel row2 = new JPanel(new FlowLayout(FlowLayout.LEFT));
@@ -110,7 +128,23 @@ public class LoggedInView extends JPanel implements ActionListener, PropertyChan
         JScrollPane scrollPane = new JScrollPane(resultsPanel);
         scrollPane.setPreferredSize(new Dimension(600, 300));
 
-        // User Management Section (original functionality)
+        final JPanel addIngredientPanel = new JPanel();
+        addIngredientPanel.setBorder(BorderFactory.createTitledBorder("Add Ingredient"));
+        addIngredientPanel.add(new JLabel("Ingredient:"));
+        addIngredientPanel.add(addIngredientField);
+        addIngredientPanel.add(addIngredientButton);
+
+        final JPanel removeIngredientPanel = new JPanel();
+        removeIngredientPanel.setBorder(BorderFactory.createTitledBorder("Remove Ingredient"));
+        removeIngredientPanel.add(new JLabel("Ingredient:"));
+        removeIngredientPanel.add(removeIngredientField);
+        removeIngredientPanel.add(removeIngredientButton);
+
+        final JPanel manageIngredientsPanel = new JPanel(new GridLayout(1, 2, 10, 0));
+        manageIngredientsPanel.setBorder(BorderFactory.createTitledBorder("Manage Ingredients"));
+        manageIngredientsPanel.add(addIngredientPanel);
+        manageIngredientsPanel.add(removeIngredientPanel);
+
         final JPanel userPanel = new JPanel();
         userPanel.setBorder(BorderFactory.createTitledBorder("Account Management"));
         userPanel.setLayout(new BoxLayout(userPanel, BoxLayout.Y_AXIS));
@@ -128,17 +162,14 @@ public class LoggedInView extends JPanel implements ActionListener, PropertyChan
         changePassword = new JButton("Change Password");
         buttons.add(changePassword);
 
-        // Add components to user panel
         userPanel.add(usernameInfo);
         userPanel.add(username);
         userPanel.add(passwordInfo);
         userPanel.add(passwordErrorField);
         userPanel.add(buttons);
 
-        // Set up layout
         this.setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
 
-        // Set up listeners for original functionality
         logOut.addActionListener(this);
 
         passwordInputField.getDocument().addDocumentListener(new DocumentListener() {
@@ -172,7 +203,8 @@ public class LoggedInView extends JPanel implements ActionListener, PropertyChan
                         if (this.changePasswordController != null) {
                             this.changePasswordController.execute(
                                     currentState.getUsername(),
-                                    currentState.getPassword()
+                                    currentState.getPassword(),
+                                    currentState.getIngredients()
                             );
                         }
                     }
@@ -182,6 +214,31 @@ public class LoggedInView extends JPanel implements ActionListener, PropertyChan
         // Set up recipe search listeners
         searchButton.addActionListener(evt -> performSearch());
         randomButton.addActionListener(evt -> getRandomRecipe());
+        ingredientButton.addActionListener(evt -> displayIngredients(getIngredients(username.getText())));
+        addIngredientButton.addActionListener(evt -> {
+            String user = username.getText();
+            String ingredient = addIngredientField.getText();
+            if (user != null && !user.isEmpty() && addIngredientController != null) {
+                List<String> updated = addIngredientController.addIngredient(user, ingredient);
+                ingredientInventoryState.setIngredients(updated);
+                displayIngredients(updated);
+                addIngredientField.setText("");
+            }
+        });
+        removeIngredientButton.addActionListener(evt -> {
+            String user = username.getText();
+            String ingredient = removeIngredientField.getText();
+            if (user != null && !user.isEmpty() && removeIngredientController != null) {
+                var result = removeIngredientController.removeIngredient(user, ingredient);
+                if (result.isRemoved()) {
+                    ingredientInventoryState.setIngredients(result.getIngredients());
+                    displayIngredients(result.getIngredients());
+                    removeIngredientField.setText("");
+                } else {
+                    JOptionPane.showMessageDialog(this, "Ingredient not found", "Remove Ingredient", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        });
 
         // Favorites button listener
         favoritesButton.addActionListener(evt -> showFavorites());
@@ -191,6 +248,7 @@ public class LoggedInView extends JPanel implements ActionListener, PropertyChan
         this.add(Box.createRigidArea(new Dimension(0, 10))); // Spacer
         this.add(searchPanel);
         this.add(Box.createRigidArea(new Dimension(0, 10))); // Spacer
+        this.add(manageIngredientsPanel);
         this.add(scrollPane);
         this.add(Box.createRigidArea(new Dimension(0, 10))); // Spacer
         this.add(statusLabel);
@@ -273,6 +331,27 @@ public class LoggedInView extends JPanel implements ActionListener, PropertyChan
                 });
             }
         }).start();
+    }
+
+    private List<String> getIngredients(String username) {
+        List<String> ingredients = ingredientInventoryController.getIngredients(username);
+        ingredientInventoryState.setIngredients(ingredients);
+        return ingredients;
+    }
+
+    private void displayIngredients(List<String> ingredients){
+        resultsPanel.removeAll();
+        if(ingredients.isEmpty()){
+            resultsPanel.add(new JLabel("No ingredients stored"));
+        }
+        else {
+            for(String ingredient: ingredients){
+                JLabel ingredient_label = new JLabel(ingredient);
+                resultsPanel.add(ingredient_label);
+            }
+        }
+        resultsPanel.revalidate();
+        resultsPanel.repaint();
     }
 
     private void displayRecipes(List<Recipe> recipes) {
@@ -727,6 +806,10 @@ public class LoggedInView extends JPanel implements ActionListener, PropertyChan
                     break;
             }
         }
+        else if(evt.getSource() == ingredientInventoryState) {
+            displayIngredients(ingredientInventoryState.getIngredients());
+            ingredientButton.setEnabled(true);
+        }
     }
 
     public String getViewName() {
@@ -741,6 +824,13 @@ public class LoggedInView extends JPanel implements ActionListener, PropertyChan
         this.logoutController = logoutController;
     }
 
+    public void setAddIngredientController(AddIngredientController addIngredientController) {
+        this.addIngredientController = addIngredientController;
+    }
+
+    public void setRemoveIngredientController(RemoveIngredientController removeIngredientController) {
+        this.removeIngredientController = removeIngredientController;
+    }
     public void setConvertUnitsController(ConvertUnitsController convertUnitsController) {
         this.convertUnitsController = convertUnitsController;
         //System.out.println("DEBUG: ConvertUnitsController injected: " + convertUnitsController);

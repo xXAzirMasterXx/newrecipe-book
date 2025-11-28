@@ -1,5 +1,7 @@
 package interface_adapter.logged_in;
 
+import java.util.List;
+
 /**
  * The State information representing the logged-in user.
  */
@@ -8,14 +10,15 @@ public class LoggedInState {
 
     private String password = "";
     private String passwordError;
+    private List<String> ingredients;
 
     public LoggedInState(LoggedInState copy) {
         username = copy.username;
         password = copy.password;
         passwordError = copy.passwordError;
+        ingredients = copy.ingredients;
     }
 
-    // Because of the previous copy constructor, the default constructor must be explicit.
     public LoggedInState() {
 
     }
@@ -43,4 +46,7 @@ public class LoggedInState {
     public String getPasswordError() {
         return passwordError;
     }
+
+    public List<String> getIngredients() {return ingredients; }
+
 }

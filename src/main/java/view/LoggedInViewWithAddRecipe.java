@@ -1,6 +1,8 @@
 package view;
 
 import interface_adapter.ViewManagerModel;
+import interface_adapter.ingredient_inventory.IngredientInventoryController;
+import interface_adapter.ingredient_inventory.IngredientInventoryState;
 import interface_adapter.logged_in.LoggedInViewModel;
 import interface_adapter.recipe.RecipeController;
 import interface_adapter.recipe.RecipeViewModel;
@@ -20,6 +22,11 @@ public class LoggedInViewWithAddRecipe extends LoggedInView {
     private final JButton addRecipeButton = new JButton("Add Recipe");
     private final JButton myRecipesButton = new JButton("My Recipes");
 
+    public LoggedInViewWithAddRecipe(LoggedInViewModel loggedInViewModel, RecipeViewModel recipeViewModel, RecipeController recipeController, IngredientInventoryState ingredientInventoryState, IngredientInventoryController ingredientInventoryController, ViewManagerModel viewManagerModel) {
+        super(loggedInViewModel, recipeViewModel, recipeController, ingredientInventoryState, ingredientInventoryController);
+        this.viewManagerModel = viewManagerModel;
+    }
+
     // setter 保留
     public void setMyRecipesController(MyRecipesController controller) {
         this.myRecipesController = controller;
@@ -28,9 +35,11 @@ public class LoggedInViewWithAddRecipe extends LoggedInView {
     public LoggedInViewWithAddRecipe(LoggedInViewModel loggedInViewModel,
                                      RecipeViewModel recipeViewModel,
                                      RecipeController recipeController,
-                                     ViewManagerModel viewManagerModel) {
+                                     ViewManagerModel viewManagerModel,
+                                     IngredientInventoryState ingredientInventoryState,
+                                     IngredientInventoryController ingredientInventoryController) {
 
-        super(loggedInViewModel, recipeViewModel, recipeController);
+        super(loggedInViewModel, recipeViewModel, recipeController, ingredientInventoryState, ingredientInventoryController);
         this.viewManagerModel = viewManagerModel;
 
         JPanel bottomPanel = new JPanel();

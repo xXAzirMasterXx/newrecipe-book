@@ -16,7 +16,6 @@ public class Recipe {
     private final String youtubeUrl;
     private final String sourceUrl;
 
-    // You could also store ingredients as arrays/lists, but here we’ll use simple strings for now.
     private final String[] ingredients;
     private final String[] measures;
     private int cookingTime;
