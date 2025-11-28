@@ -15,6 +15,12 @@ import interface_adapter.recipe.RecipeViewModel;
 import entity.Recipe;
 import entity.FavoriteManager;
 
+// For unit conversions
+import interface_adapter.convert_units.ConvertUnitsController;
+import interface_adapter.convert_units.ConvertUnitsViewModel;
+import entity.MeasurementSystem;
+
+
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
@@ -28,8 +34,6 @@ import java.util.ArrayList;
 import java.util.Set;
 import java.net.URL;
 import java.awt.Image;
-import use_case.add_recipe.UnitConversionUtils;
-
 
 
 public class LoggedInView extends JPanel implements ActionListener, PropertyChangeListener {
@@ -44,6 +48,11 @@ public class LoggedInView extends JPanel implements ActionListener, PropertyChan
     private RecipeController recipeController;
     private JComboBox<String> categoryDropdown;
     private JComboBox<String> areaDropdown;
+    private ConvertUnitsController convertUnitsController;
+    private ConvertUnitsViewModel convertUnitsViewModel;
+
+
+
 
     private IngredientInventoryController ingredientInventoryController;
     private AddIngredientController addIngredientController;
@@ -436,92 +445,44 @@ public class LoggedInView extends JPanel implements ActionListener, PropertyChan
         return panel;
     }
 
+    private MeasurementSystem guessTargetSystemFromOriginal(String[] measures) {
+        boolean sawMetric = false;
+        boolean sawImperial = false;
 
-    private void showRecipeDetails(Recipe recipe) {
-        // Cache this recipe when viewing details
-        FavoriteManager.getInstance().cacheRecipe(recipe);
+        if (measures != null) {
+            for (String raw : measures) {
+                if (raw == null) continue;
+                String lower = raw.toLowerCase();
 
-        // Build the text details
-        StringBuilder details = new StringBuilder();
-        details.append("Name: ").append(recipe.getName()).append("\n\n");
-        details.append("Category: ").append(recipe.getCategory()).append("\n");
-        details.append("Cuisine: ").append(recipe.getArea()).append("\n\n");
-        details.append("Ingredients:\n");
-
-        String[] ingredients = recipe.getIngredients();
-        String[] measures = recipe.getMeasures();
-        for (int i = 0; i < ingredients.length; i++) {
-            if (ingredients[i] != null && !ingredients[i].isEmpty()) {
-                details.append("• ")
-                        .append(measures[i] != null ? measures[i] : "")
-                        .append(" ")
-                        .append(ingredients[i])
-                        .append("\n");
-            }
-        }
-
-        details.append("\nInstructions:\n").append(recipe.getInstructions());
-
-        JTextArea textArea = new JTextArea(details.toString());
-        textArea.setEditable(false);
-        textArea.setLineWrap(true);
-        textArea.setWrapStyleWord(true);
-
-        JScrollPane scrollPane = new JScrollPane(textArea);
-        scrollPane.setPreferredSize(new Dimension(500, 300));
-
-        // Image label
-        JLabel imageLabel = new JLabel();
-        imageLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        imageLabel.setVerticalAlignment(SwingConstants.CENTER);
-        imageLabel.setPreferredSize(new Dimension(300, 200));
-
-        String imageUrl = recipe.getImageUrl();
-        if (imageUrl != null && !imageUrl.isEmpty()) {
-            // Load image in a background thread
-            new Thread(() -> {
-                try {
-                    URL url = new URL(imageUrl);
-                    ImageIcon icon = new ImageIcon(url);
-                    Image scaled = icon.getImage().getScaledInstance(300, 200, Image.SCALE_SMOOTH);
-                    ImageIcon scaledIcon = new ImageIcon(scaled);
-
-                    SwingUtilities.invokeLater(() -> imageLabel.setIcon(scaledIcon));
-                } catch (Exception ex) {
-                    System.err.println("Failed to load details image for recipe "
-                            + recipe.getName() + ": " + ex.getMessage());
+                if (lower.contains(" g") || lower.endsWith("g") ||
+                        lower.contains(" ml") || lower.endsWith("ml")) {
+                    sawMetric = true;
                 }
-            }).start();
+                if (lower.contains(" cup") || lower.contains("cups") ||
+                        lower.contains("tbsp") || lower.contains("tablespoon") ||
+                        lower.contains("tablespoons") ||
+                        lower.contains("tsp") || lower.contains("teaspoon") ||
+                        lower.contains("teaspoons") ||
+                        lower.contains(" oz") || lower.endsWith("oz")) {
+                    sawImperial = true;
+                }
+            }
         }
 
-        // Add favorite button
-        JButton favoriteButton = new JButton("☆ Favorite");
-        favoriteButton.addActionListener(e -> {
-            boolean isNowFavorite = FavoriteManager.getInstance().toggleFavorite(recipe.getId());
-            if (isNowFavorite) {
-                favoriteButton.setText("★ Favorited");
-                JOptionPane.showMessageDialog(this, "Added to favorites!", "Favorite", JOptionPane.INFORMATION_MESSAGE);
-            } else {
-                favoriteButton.setText("☆ Favorite");
-                JOptionPane.showMessageDialog(this, "Removed from favorites", "Favorite", JOptionPane.INFORMATION_MESSAGE);
-            }
+        // If original is metric → convert to imperial; if imperial → convert to metric.
+        if (sawMetric && !sawImperial) {
+            return MeasurementSystem.IMPERIAL;
+        }
+        if (sawImperial && !sawMetric) {
+            return MeasurementSystem.METRIC;
+        }
 
-            // Refresh the recipe display to show/hide the star
-            refreshRecipeDisplay();
-        });
-
-        // Create a panel for the button
-        JPanel buttonPanel = new JPanel();
-        buttonPanel.add(favoriteButton);
-
-        // Create main panel with image + text + favorite button
-        JPanel mainPanel = new JPanel(new BorderLayout());
-        mainPanel.add(imageLabel, BorderLayout.NORTH);
-        mainPanel.add(scrollPane, BorderLayout.CENTER);
-        mainPanel.add(buttonPanel, BorderLayout.SOUTH);
-
-        JOptionPane.showMessageDialog(this, mainPanel, "Recipe Details: " + recipe.getName(), JOptionPane.INFORMATION_MESSAGE);
+        // Mixed / unknown → default to IMPERIAL target
+        return MeasurementSystem.IMPERIAL;
     }
+
+
+
 
     private void refreshRecipeDisplay() {
         System.out.println("DEBUG: refreshRecipeDisplay called");
@@ -561,6 +522,172 @@ public class LoggedInView extends JPanel implements ActionListener, PropertyChan
             System.out.println("DEBUG: No recipes to refresh");
         }
     }
+
+    private void showRecipeDetails(Recipe recipe) {
+        // Cache this recipe when viewing details
+        FavoriteManager.getInstance().cacheRecipe(recipe);
+
+        String[] ingredients = recipe.getIngredients();
+        String[] measures = recipe.getMeasures();
+
+        final String[] ingredientsFinal = ingredients;
+        final String instructions = recipe.getInstructions();
+
+        // Original and current measures for toggling
+        final String[] originalMeasures = measures != null ? measures.clone() : new String[0];
+        final String[][] currentMeasuresHolder = { measures != null ? measures.clone() : new String[0] };
+        final boolean[] showingConverted = { false };
+
+        // Text area showing details; will be updated after conversions
+        JTextArea textArea = new JTextArea();
+        textArea.setEditable(false);
+        textArea.setLineWrap(true);
+        textArea.setWrapStyleWord(true);
+
+        // Helper to refresh the text area contents
+        Runnable updateText = () -> {
+            StringBuilder details = new StringBuilder();
+            details.append("Name: ").append(recipe.getName()).append("\n\n");
+            details.append("Category: ").append(recipe.getCategory()).append("\n");
+            details.append("Cuisine: ").append(recipe.getArea()).append("\n\n");
+            details.append("Ingredients:\n");
+
+            String[] currentMeasures = currentMeasuresHolder[0];
+
+            for (int i = 0; i < ingredientsFinal.length; i++) {
+                String ing = ingredientsFinal[i];
+                if (ing != null && !ing.isEmpty()) {
+                    String measureText = "";
+                    if (currentMeasures != null && i < currentMeasures.length && currentMeasures[i] != null) {
+                        measureText = currentMeasures[i];
+                    }
+                    details.append("• ")
+                            .append(measureText)
+                            .append(measureText.isEmpty() ? "" : " ")
+                            .append(ing)
+                            .append("\n");
+                }
+            }
+
+            details.append("\nInstructions:\n").append(instructions);
+
+            textArea.setText(details.toString());
+            textArea.setCaretPosition(0); // scroll to top
+        };
+
+        // Initial fill
+        updateText.run();
+
+        JScrollPane scrollPane = new JScrollPane(textArea);
+        scrollPane.setPreferredSize(new Dimension(500, 300));
+
+        // Image label
+        JLabel imageLabel = new JLabel();
+        imageLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        imageLabel.setVerticalAlignment(SwingConstants.CENTER);
+        imageLabel.setPreferredSize(new Dimension(300, 200));
+
+        String imageUrl = recipe.getImageUrl();
+        if (imageUrl != null && !imageUrl.isEmpty()) {
+            // Load image in a background thread
+            new Thread(() -> {
+                try {
+                    URL url = new URL(imageUrl);
+                    ImageIcon icon = new ImageIcon(url);
+                    Image scaled = icon.getImage().getScaledInstance(300, 200, Image.SCALE_SMOOTH);
+                    ImageIcon scaledIcon = new ImageIcon(scaled);
+
+                    SwingUtilities.invokeLater(() -> imageLabel.setIcon(scaledIcon));
+                } catch (Exception ex) {
+                    System.err.println("Failed to load details image for recipe "
+                            + recipe.getName() + ": " + ex.getMessage());
+                }
+            }).start();
+        }
+
+        // Favorite button
+        JButton favoriteButton = new JButton("☆ Favorite");
+        favoriteButton.addActionListener(e -> {
+            boolean isNowFavorite = FavoriteManager.getInstance().toggleFavorite(recipe.getId());
+            if (isNowFavorite) {
+                favoriteButton.setText("★ Favorited");
+                JOptionPane.showMessageDialog(this, "Added to favorites!", "Favorite", JOptionPane.INFORMATION_MESSAGE);
+            } else {
+                favoriteButton.setText("☆ Favorite");
+                JOptionPane.showMessageDialog(this, "Removed from favorites", "Favorite", JOptionPane.INFORMATION_MESSAGE);
+            }
+
+            // Refresh the recipe display to show/hide the star
+            refreshRecipeDisplay();
+        });
+
+        // Convert Units button
+        JButton convertUnitsButton = new JButton("Convert Units");
+        convertUnitsButton.addActionListener(e -> {
+            if (convertUnitsController == null || convertUnitsViewModel == null) {
+                JOptionPane.showMessageDialog(this,
+                        "Unit conversion is not available.",
+                        "Conversion Error",
+                        JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            if (!showingConverted[0]) {
+                // First click: convert FROM the original measures.
+                // The interactor will detect unit system per-measure and flip it.
+                convertUnitsController.execute(
+                        recipe.getId(),
+                        recipe.getName(),
+                        ingredientsFinal,
+                        originalMeasures,
+                        entity.MeasurementSystem.METRIC  // ignored by interactor (it flips per-unit)
+                );
+
+                var state = convertUnitsViewModel.getState();
+                String[] converted = state.getConvertedMeasures();
+
+                if (converted != null && converted.length > 0) {
+                    currentMeasuresHolder[0] = converted;
+                    showingConverted[0] = true;
+                    convertUnitsButton.setText("Show Original Units");
+                    updateText.run();
+                } else if (state.getErrorMessage() != null) {
+                    JOptionPane.showMessageDialog(this,
+                            state.getErrorMessage(),
+                            "Conversion Error",
+                            JOptionPane.ERROR_MESSAGE);
+                } else {
+                    JOptionPane.showMessageDialog(this,
+                            "Failed to convert units.",
+                            "Conversion Error",
+                            JOptionPane.ERROR_MESSAGE);
+                }
+            } else {
+                // Second click: just show the original measures again.
+                currentMeasuresHolder[0] = originalMeasures;
+                showingConverted[0] = false;
+                convertUnitsButton.setText("Convert Units");
+                updateText.run();
+            }
+        });
+
+        // Buttons panel: Favorite + Convert Units
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.add(favoriteButton);
+        buttonPanel.add(convertUnitsButton);
+
+        // Main panel (image + text + buttons)
+        JPanel mainPanel = new JPanel(new BorderLayout());
+        mainPanel.add(imageLabel, BorderLayout.NORTH);
+        mainPanel.add(scrollPane, BorderLayout.CENTER);
+        mainPanel.add(buttonPanel, BorderLayout.SOUTH);
+
+        JOptionPane.showMessageDialog(this,
+                mainPanel,
+                "Recipe Details: " + recipe.getName(),
+                JOptionPane.INFORMATION_MESSAGE);
+    }
+
 
     private void showFavorites() {
         Set<String> favoriteIds = FavoriteManager.getInstance().getFavoriteRecipeIds();
@@ -704,4 +831,13 @@ public class LoggedInView extends JPanel implements ActionListener, PropertyChan
     public void setRemoveIngredientController(RemoveIngredientController removeIngredientController) {
         this.removeIngredientController = removeIngredientController;
     }
+    public void setConvertUnitsController(ConvertUnitsController convertUnitsController) {
+        this.convertUnitsController = convertUnitsController;
+        //System.out.println("DEBUG: ConvertUnitsController injected: " + convertUnitsController);
+    }
+
+    public void setConvertUnitsViewModel(ConvertUnitsViewModel convertUnitsViewModel) {
+        this.convertUnitsViewModel = convertUnitsViewModel;
+    }
+
 }
