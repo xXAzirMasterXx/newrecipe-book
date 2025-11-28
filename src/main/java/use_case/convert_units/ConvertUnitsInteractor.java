@@ -146,10 +146,20 @@ public class ConvertUnitsInteractor implements ConvertUnitsInputBoundary {
             // IMPERIAL → METRIC
             switch (normalizedUnit) {
                 case "cup":
-                    newValue = value * 240.0;   // ml
-                    newUnit = "ml";
+                    double ml = value * 240.0;
+
+                    // convert to litres if >= 1000ml
+                    if (ml >= 1000.0) {
+                        newValue = ml / 1000.0;
+                        newUnit = "l";
+                    } else {
+                        newValue = ml;
+                        newUnit = "ml";
+                    }
+
                     newSystem = MeasurementSystem.METRIC;
                     break;
+
                 case "tbsp":
                     newValue = value * 15.0;    // ml
                     newUnit = "ml";
@@ -184,6 +194,11 @@ public class ConvertUnitsInteractor implements ConvertUnitsInputBoundary {
         } else {
             // METRIC → IMPERIAL
             switch (normalizedUnit) {
+                case "l":
+                    newValue = (value * 1000.0) / 240.0; // convert L → ml → cups
+                    newUnit = "cup";
+                    newSystem = MeasurementSystem.IMPERIAL;
+                    break;
                 case "ml":
                     newValue = value / 240.0;   // cups approx
                     newUnit = "cup";
@@ -246,12 +261,12 @@ public class ConvertUnitsInteractor implements ConvertUnitsInputBoundary {
         unit = unit.trim().toLowerCase();
 
         switch (unit) {
-            // volume, imperial
+            // imperial
             case "tablespoon":
             case "tablespoons":
             case "tblsp":
             case "tbsp":
-            case "tbs":        // important for "2 tbs"
+            case "tbs":
                 return "tbsp";
             case "teaspoon":
             case "teaspoons":
@@ -286,14 +301,24 @@ public class ConvertUnitsInteractor implements ConvertUnitsInputBoundary {
             case "ml":
                 return "ml";
 
+            // ✅ NEW: litres
+            case "l":
+            case "litre":
+            case "litres":
+            case "liter":
+            case "liters":
+                return "l";
+
             default:
-                return unit; // unknown; classification decides later
+                return unit;
         }
     }
 
+
     private boolean isMetricUnit(String unit) {
-        return "g".equals(unit) || "kg".equals(unit) || "ml".equals(unit);
+        return "g".equals(unit) || "kg".equals(unit) || "ml".equals(unit) || "l".equals(unit);
     }
+
 
     private boolean isImperialUnit(String unit) {
         return "cup".equals(unit) ||

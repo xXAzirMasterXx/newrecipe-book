@@ -743,7 +743,7 @@ public class LoggedInView extends JPanel implements ActionListener, PropertyChan
 
     public void setConvertUnitsController(ConvertUnitsController convertUnitsController) {
         this.convertUnitsController = convertUnitsController;
-        System.out.println("DEBUG: ConvertUnitsController injected: " + convertUnitsController);
+        //System.out.println("DEBUG: ConvertUnitsController injected: " + convertUnitsController);
     }
 
     public void setConvertUnitsViewModel(ConvertUnitsViewModel convertUnitsViewModel) {
