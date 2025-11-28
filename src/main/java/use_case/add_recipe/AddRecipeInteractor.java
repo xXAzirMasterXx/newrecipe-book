@@ -1,4 +1,4 @@
-package use_case.add_recipes;
+package use_case.add_recipe;
 
 import entity.Recipe;
 import entity.RecipeFactory;
@@ -73,6 +73,8 @@ public class AddRecipeInteractor implements AddRecipeInputBoundary {
                 inputData.getIngredients(),
                 inputData.getMeasures()
         );
+
+        recipe.setCookingTime(cookingTime);
 
         // 5. Save
         recipeDataAccess.save(recipe);

@@ -18,6 +18,7 @@ public class Recipe {
 
     private final String[] ingredients;
     private final String[] measures;
+    private int cookingTime;
 
     /**
      * Creates a new recipe entity with all the required fields.
@@ -54,6 +55,7 @@ public class Recipe {
         this.sourceUrl = sourceUrl;
         this.ingredients = ingredients;
         this.measures = measures;
+        this.cookingTime = 0;
     }
 
     public String getId() {
@@ -94,6 +96,14 @@ public class Recipe {
 
     public String[] getMeasures() {
         return measures;
+    }
+
+    public int getCookingTime() {
+        return cookingTime;
+    }
+
+    public void setCookingTime(int cookingTime) {
+        this.cookingTime = cookingTime;
     }
 
 }

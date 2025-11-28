@@ -1,5 +1,19 @@
 package app;
 
+import interface_adapter.my_recipes.MyRecipesController;
+import interface_adapter.my_recipes.MyRecipesPresenter;
+import interface_adapter.my_recipes.MyRecipesState;
+import interface_adapter.my_recipes.MyRecipesViewModel;
+
+import view.LoggedInViewWithAddRecipe;
+import use_case.add_recipe.AddRecipeInputBoundary;
+import use_case.add_recipe.AddRecipeInteractor;
+import use_case.add_recipe.AddRecipeOutputBoundary;
+import data_access.AddRecipeInMemoryDataAccessObject;
+import view.AddRecipeView;
+import interface_adapter.addRecipe.AddRecipeController;
+import interface_adapter.addRecipe.AddRecipePresenter;
+import interface_adapter.addRecipe.AddRecipeViewModel;
 import data_access.FileUserDataAccessObject;
 import data_access.RecipeDataAccessObject;
 import entity.UserFactory;
@@ -17,6 +31,7 @@ import interface_adapter.login.LoginPresenter;
 import interface_adapter.login.LoginViewModel;
 import interface_adapter.logout.LogoutController;
 import interface_adapter.logout.LogoutPresenter;
+import interface_adapter.recipe.RecipePresenter;
 import interface_adapter.signup.SignupController;
 import interface_adapter.signup.SignupPresenter;
 import interface_adapter.signup.SignupViewModel;
@@ -38,13 +53,19 @@ import use_case.login.LoginInteractor;
 import use_case.login.LoginOutputBoundary;
 import use_case.logout.LogoutInputBoundary;
 import use_case.logout.LogoutInteractor;
-import use_case.recipe.GetRandomRecipeUseCase;
-import use_case.recipe.RecipeDataAccessInterface;
-import use_case.recipe.SearchRecipesUseCase;
+import use_case.recipe.*;
 import use_case.logout.LogoutOutputBoundary;
 import use_case.signup.SignupInputBoundary;
 import use_case.signup.SignupInteractor;
 import use_case.signup.SignupOutputBoundary;
+import use_case.my_recipes.MyRecipesInputBoundary;
+import use_case.my_recipes.MyRecipesInteractor;
+import use_case.my_recipes.MyRecipesOutputBoundary;
+import view.LoggedInView;
+import view.LoginView;
+import view.SignupView;
+import view.ViewManager;
+import view.MyRecipesView;
 import view.*;
 
 import javax.swing.*;
@@ -53,6 +74,8 @@ import java.awt.*;
 public class AppBuilder {
     private final JPanel cardPanel = new JPanel();
     private final CardLayout cardLayout = new CardLayout();
+    private final AddRecipeInMemoryDataAccessObject addRecipeDAO =
+            new AddRecipeInMemoryDataAccessObject();
     final UserFactory userFactory = new UserFactory();
     final ViewManagerModel viewManagerModel = new ViewManagerModel();
     ViewManager viewManager = new ViewManager(cardPanel, cardLayout, viewManagerModel);
@@ -72,10 +95,12 @@ public class AppBuilder {
     private SignupViewModel signupViewModel;
     private LoginViewModel loginViewModel;
     private LoggedInViewModel loggedInViewModel;
-    private LoggedInView loggedInView;
+    private LoggedInViewWithAddRecipe loggedInView;;
     private LoginView loginView;
     private IngredientInventoryViewModel ingredientInventoryViewModel;
     private IngredientInventoryView ingredientInventoryView;
+    private MyRecipesViewModel myRecipesViewModel;
+    private MyRecipesController myRecipesController;
 
     private RecipeController recipeController;
     private IngredientInventoryController ingredientInventoryController;
@@ -106,31 +131,22 @@ public class AppBuilder {
         loggedInViewModel = new LoggedInViewModel();
         ingredientInventoryState = new IngredientInventoryState();
 
-        // Ensure recipe use case exists first (your code already checks this)
         if (recipeController == null) {
             this.addRecipeUseCase();
         }
 
-        // Ensure ingredient inventory use case is set up and controller is stored in the field
         this.addIngredientInventoryUseCase();
-
-        // Ensure add ingredients use case is set up
         this.addAddIngredientsUseCase();
-
-        // Ensure remove ingredients use case is set up
         this.addRemoveIngredientsUseCase();
-
-        // Now use the initialized field
-        loggedInView = new LoggedInView(
+        loggedInView = new LoggedInViewWithAddRecipe(
                 loggedInViewModel,
                 recipeViewModel,
                 recipeController,
+                viewManagerModel,
                 ingredientInventoryState,
                 ingredientInventoryController
         );
-        // inject add ingredient controller
         loggedInView.setAddIngredientController(addIngredientController);
-        // inject remove ingredient controller
         loggedInView.setRemoveIngredientController(removeIngredientController);
         cardPanel.add(loggedInView, loggedInView.getViewName());
         return this;
@@ -141,6 +157,7 @@ public class AppBuilder {
         ingredientInventoryView = new IngredientInventoryView(ingredientInventoryViewModel);
         return this;
     }
+
 
     public AppBuilder addSignupUseCase() {
         final SignupOutputBoundary signupOutputBoundary = new SignupPresenter(viewManagerModel,
@@ -223,14 +240,88 @@ public class AppBuilder {
     }
 
     public AppBuilder addRecipeUseCase() {
-        // Create use cases
-        SearchRecipesUseCase searchRecipesUseCase = new SearchRecipesUseCase(recipeDataAccess);
-        GetRandomRecipeUseCase getRandomRecipeUseCase = new GetRandomRecipeUseCase(recipeDataAccess);
 
-        // Create controller
-        recipeController = new RecipeController(searchRecipesUseCase, getRandomRecipeUseCase);
+        // 1. Create presenter
+        RecipePresenter recipePresenter = new RecipePresenter(recipeViewModel);
+
+        // 2. Create use cases
+        SearchRecipesUseCase searchRecipesUseCase = new SearchRecipesUseCase(recipeDataAccess, recipePresenter);
+        GetRandomRecipeUseCase getRandomRecipeUseCase = new GetRandomRecipeUseCase(recipeDataAccess, recipePresenter);
+        GetAreasUseCase getAreasUseCase = new GetAreasUseCase(recipeDataAccess, recipePresenter);
+        GetCategoriesUseCase getCategoriesUseCase = new GetCategoriesUseCase(recipeDataAccess, recipePresenter);
+
+        // 3. Create controller with all required dependencies
+        recipeController = new RecipeController(
+                searchRecipesUseCase,
+                getRandomRecipeUseCase,
+                getAreasUseCase,
+                getCategoriesUseCase
+        );
+
         return this;
     }
+    public AppBuilder addAddRecipeUseCase() {
+
+        // ==== AddRecipe ViewModel ====
+        AddRecipeViewModel addRecipeViewModel = new AddRecipeViewModel();
+
+        // ==== Presenter ====
+        AddRecipeOutputBoundary addRecipePresenter =
+                new AddRecipePresenter(addRecipeViewModel, viewManagerModel);
+
+        // ==== Interactor ====   —— 这里用字段 addRecipeDAO，而不是 new
+        AddRecipeInputBoundary addRecipeInteractor =
+                new AddRecipeInteractor(
+                        addRecipeDAO,
+                        addRecipePresenter,
+                        new entity.RecipeFactory()
+                );
+
+        // ==== Controller ====
+        AddRecipeController addRecipeController =
+                new AddRecipeController(addRecipeInteractor);
+
+        // ==== View ====
+        AddRecipeView addRecipeView =
+                new AddRecipeView(addRecipeViewModel, viewManagerModel, addRecipeController);
+
+        cardPanel.add(addRecipeView, addRecipeView.getViewName());
+
+        return this;
+    }
+
+    public AppBuilder addMyRecipesView() {
+
+        // 1. ViewModel
+        myRecipesViewModel = new MyRecipesViewModel();
+
+        // 2. Presenter
+        MyRecipesOutputBoundary presenter =
+                new MyRecipesPresenter(myRecipesViewModel, viewManagerModel);
+
+        // 3. Interactor
+        MyRecipesInputBoundary interactor =
+                new MyRecipesInteractor(addRecipeDAO, presenter);
+
+        // 4. Controller → 保存到字段（给 LoggedInView 使用）
+        myRecipesController = new MyRecipesController(interactor);
+
+        // ★★ 关键：把 controller 传给 LoggedInViewWithAddRecipe
+        if (loggedInView != null) {
+            loggedInView.setMyRecipesController(myRecipesController);
+        }
+
+        // 5. View（必须传 viewModel + viewManagerModel）
+        MyRecipesView myRecipesView =
+                new MyRecipesView(myRecipesViewModel, viewManagerModel);
+
+        // 6. 注册到 CardLayout
+        cardPanel.add(myRecipesView, myRecipesView.getViewName());
+
+        return this;
+    }
+
+
 
     public JFrame build() {
         final JFrame application = new JFrame("User Login Example");
