@@ -23,7 +23,7 @@ public class LoggedInViewWithAddRecipe extends LoggedInView {
     private final JButton myRecipesButton = new JButton("My Recipes");
 
     public LoggedInViewWithAddRecipe(LoggedInViewModel loggedInViewModel, RecipeViewModel recipeViewModel, RecipeController recipeController, IngredientInventoryState ingredientInventoryState, IngredientInventoryController ingredientInventoryController, ViewManagerModel viewManagerModel) {
-        super();
+        super(loggedInViewModel, recipeViewModel, recipeController, ingredientInventoryState, ingredientInventoryController);
         this.viewManagerModel = viewManagerModel;
     }
 
