@@ -91,11 +91,6 @@ public class LoggedInView extends JPanel implements ActionListener, PropertyChan
         // Recipe Search Section
         final JPanel searchPanel = new JPanel();
         searchPanel.setBorder(BorderFactory.createTitledBorder("Recipe Search"));
-        searchPanel.add(new JLabel("Search:"));
-        searchPanel.add(searchField);
-        searchPanel.add(searchButton);
-        searchPanel.add(randomButton);
-        searchPanel.add(ingredientButton);
         searchPanel.setLayout(new BoxLayout(searchPanel, BoxLayout.Y_AXIS));
 
         JPanel row1 = new JPanel(new FlowLayout(FlowLayout.LEFT));
@@ -103,6 +98,7 @@ public class LoggedInView extends JPanel implements ActionListener, PropertyChan
         row1.add(searchField);
         row1.add(searchButton);
         row1.add(randomButton);
+        row1.add(ingredientButton);
         searchPanel.add(row1);
 
         JPanel row2 = new JPanel(new FlowLayout(FlowLayout.LEFT));
