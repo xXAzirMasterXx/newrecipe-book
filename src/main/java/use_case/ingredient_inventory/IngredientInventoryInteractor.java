@@ -1,7 +1,5 @@
 package use_case.ingredient_inventory;
-import entity.Ingredient;
 import entity.User;
-import interface_adapter.ingredient_inventory.IngredientInventoryPresenter;
 
 import java.util.*;
 
@@ -14,12 +12,16 @@ public class IngredientInventoryInteractor implements IngredientInventoryInputBo
         this.ingredientInventoryUserDataAccessObject = ingredientInventoryUserDataAccessInterface;
     }
 
-    public void execute(IngredientInventoryInputData ingredientInventoryInputData){
+    public List<String> execute(IngredientInventoryInputData ingredientInventoryInputData){
         List<String> ingredient = new ArrayList<>();
-        final User user = ingredientInventoryUserDataAccessObject.get(ingredientInventoryInputData.getUsername());
-        ingredient = ingredientInventoryUserDataAccessObject.getIngredients(user.getName());
+        ingredient = ingredientInventoryUserDataAccessObject.getIngredients(ingredientInventoryInputData.getUsername());
 
         final IngredientInventoryOutputData ingredientInventoryOutputData = new IngredientInventoryOutputData(ingredient);
-        ingredientInventoryPresenter.prepareSuccessView(ingredientInventoryOutputData);
+        return ingredientInventoryOutputData.getIngredients();
+    }
+
+    @Override
+    public void switchToLoggedinView() {
+        ingredientInventoryPresenter.switchToLoggedinView();
     }
 }

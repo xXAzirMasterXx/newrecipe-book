@@ -9,9 +9,11 @@ public class Main {
                 .addLoginView()
                 .addSignupView()
                 .addLoggedInView()
+                .addIngredientInventoryView()
                 .addSignupUseCase()
                 .addLoginUseCase()
                 .addChangePasswordUseCase()
+                .addIngredientInventoryUseCase()
                 .addLogoutUseCase()
                 .addRecipeUseCase()
                 .build();

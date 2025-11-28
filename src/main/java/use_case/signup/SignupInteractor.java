@@ -3,6 +3,9 @@ package use_case.signup;
 import entity.User;
 import entity.UserFactory;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * The Signup Interactor.
  */
@@ -34,7 +37,8 @@ public class SignupInteractor implements SignupInputBoundary {
             userPresenter.prepareFailView("Username cannot be empty");
         }
         else {
-            final User user = userFactory.create(signupInputData.getUsername(), signupInputData.getPassword());
+            List<String> ingredients = new ArrayList<>();
+            final User user = userFactory.create(signupInputData.getUsername(), signupInputData.getPassword(), ingredients);
             userDataAccessObject.save(user);
 
             final SignupOutputData signupOutputData = new SignupOutputData(user.getName());

@@ -3,11 +3,15 @@ package app;
 import data_access.FileUserDataAccessObject;
 import data_access.RecipeDataAccessObject;
 import entity.UserFactory;
-import entity.Recipe;
 import interface_adapter.ViewManagerModel;
+import interface_adapter.ingredient_inventory.IngredientInventoryController;
+import interface_adapter.ingredient_inventory.IngredientInventoryPresenter;
+import interface_adapter.ingredient_inventory.IngredientInventoryViewModel;
 import interface_adapter.logged_in.ChangePasswordController;
 import interface_adapter.logged_in.ChangePasswordPresenter;
 import interface_adapter.logged_in.LoggedInViewModel;
+import interface_adapter.add_ingredients.AddIngredientController;
+import interface_adapter.remove_ingredients.RemoveIngredientController;
 import interface_adapter.login.LoginController;
 import interface_adapter.login.LoginPresenter;
 import interface_adapter.login.LoginViewModel;
@@ -18,9 +22,17 @@ import interface_adapter.signup.SignupPresenter;
 import interface_adapter.signup.SignupViewModel;
 import interface_adapter.recipe.RecipeViewModel;
 import interface_adapter.recipe.RecipeController;
+import interface_adapter.ingredient_inventory.IngredientInventoryState;
 import use_case.change_password.ChangePasswordInputBoundary;
 import use_case.change_password.ChangePasswordInteractor;
 import use_case.change_password.ChangePasswordOutputBoundary;
+import use_case.ingredient_inventory.IngredientInventoryInputBoundary;
+import use_case.ingredient_inventory.IngredientInventoryInteractor;
+import use_case.ingredient_inventory.IngredientInventoryOutputBoundary;
+import use_case.add_ingredients.AddIngredientInputBoundary;
+import use_case.add_ingredients.AddIngredientInteractor;
+import use_case.remove_ingredients.RemoveIngredientInputBoundary;
+import use_case.remove_ingredients.RemoveIngredientInteractor;
 import use_case.login.LoginInputBoundary;
 import use_case.login.LoginInteractor;
 import use_case.login.LoginOutputBoundary;
@@ -33,10 +45,7 @@ import use_case.logout.LogoutOutputBoundary;
 import use_case.signup.SignupInputBoundary;
 import use_case.signup.SignupInteractor;
 import use_case.signup.SignupOutputBoundary;
-import view.LoggedInView;
-import view.LoginView;
-import view.SignupView;
-import view.ViewManager;
+import view.*;
 
 import javax.swing.*;
 import java.awt.*;
@@ -65,8 +74,15 @@ public class AppBuilder {
     private LoggedInViewModel loggedInViewModel;
     private LoggedInView loggedInView;
     private LoginView loginView;
+    private IngredientInventoryViewModel ingredientInventoryViewModel;
+    private IngredientInventoryView ingredientInventoryView;
 
     private RecipeController recipeController;
+    private IngredientInventoryController ingredientInventoryController;
+    private AddIngredientController addIngredientController;
+    private RemoveIngredientController removeIngredientController;
+
+    private IngredientInventoryState ingredientInventoryState;
 
     public AppBuilder() {
         cardPanel.setLayout(cardLayout);
@@ -88,13 +104,41 @@ public class AppBuilder {
 
     public AppBuilder addLoggedInView() {
         loggedInViewModel = new LoggedInViewModel();
+        ingredientInventoryState = new IngredientInventoryState();
 
+        // Ensure recipe use case exists first (your code already checks this)
         if (recipeController == null) {
-            this.addRecipeUseCase(); // Initialize recipe use case if not already done
+            this.addRecipeUseCase();
         }
 
-        loggedInView = new LoggedInView(loggedInViewModel, recipeViewModel, recipeController);
+        // Ensure ingredient inventory use case is set up and controller is stored in the field
+        this.addIngredientInventoryUseCase();
+
+        // Ensure add ingredients use case is set up
+        this.addAddIngredientsUseCase();
+
+        // Ensure remove ingredients use case is set up
+        this.addRemoveIngredientsUseCase();
+
+        // Now use the initialized field
+        loggedInView = new LoggedInView(
+                loggedInViewModel,
+                recipeViewModel,
+                recipeController,
+                ingredientInventoryState,
+                ingredientInventoryController
+        );
+        // inject add ingredient controller
+        loggedInView.setAddIngredientController(addIngredientController);
+        // inject remove ingredient controller
+        loggedInView.setRemoveIngredientController(removeIngredientController);
         cardPanel.add(loggedInView, loggedInView.getViewName());
+        return this;
+    }
+
+    public AppBuilder addIngredientInventoryView(){
+        ingredientInventoryViewModel = new IngredientInventoryViewModel();
+        ingredientInventoryView = new IngredientInventoryView(ingredientInventoryViewModel);
         return this;
     }
 
@@ -122,13 +166,43 @@ public class AppBuilder {
 
     public AppBuilder addChangePasswordUseCase() {
         final ChangePasswordOutputBoundary changePasswordOutputBoundary = new ChangePasswordPresenter(viewManagerModel,
-                loggedInViewModel);
+                loggedInViewModel, new IngredientInventoryViewModel());
 
         final ChangePasswordInputBoundary changePasswordInteractor =
                 new ChangePasswordInteractor(userDataAccessObject, changePasswordOutputBoundary, userFactory);
 
         ChangePasswordController changePasswordController = new ChangePasswordController(changePasswordInteractor);
         loggedInView.setChangePasswordController(changePasswordController);
+        return this;
+    }
+
+    public AppBuilder addIngredientInventoryUseCase() {
+        // Ensure the view model exists before constructing the presenter
+
+        final IngredientInventoryOutputBoundary ingredientInventoryOutputBoundary =
+                new IngredientInventoryPresenter(ingredientInventoryViewModel, viewManagerModel, loggedInViewModel);
+
+        final IngredientInventoryInputBoundary ingredientInventoryInteractor =
+                new IngredientInventoryInteractor(userDataAccessObject, ingredientInventoryOutputBoundary);
+
+        // Store in the field so other methods can use it
+        this.ingredientInventoryController = new IngredientInventoryController(ingredientInventoryInteractor);
+        return this;
+    }
+
+    public AppBuilder addAddIngredientsUseCase() {
+        final AddIngredientInputBoundary addIngredientInputBoundary =
+                new AddIngredientInteractor(userDataAccessObject, userDataAccessObject, userFactory);
+
+        this.addIngredientController = new AddIngredientController(addIngredientInputBoundary);
+        return this;
+    }
+
+    public AppBuilder addRemoveIngredientsUseCase() {
+        final RemoveIngredientInputBoundary removeIngredientInputBoundary =
+                new RemoveIngredientInteractor(userDataAccessObject, userDataAccessObject, userFactory);
+
+        this.removeIngredientController = new RemoveIngredientController(removeIngredientInputBoundary);
         return this;
     }
 

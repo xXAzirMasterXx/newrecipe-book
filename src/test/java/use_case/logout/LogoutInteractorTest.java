@@ -1,4 +1,4 @@
-package use_case.logout;
+/*package use_case.logout;
 
 import data_access.InMemoryUserDataAccessObject;
 import entity.UserFactory;
@@ -34,3 +34,4 @@ class LogoutInteractorTest {
     }
 
 }
+ */

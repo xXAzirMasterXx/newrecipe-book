@@ -8,6 +8,7 @@ import use_case.logout.LogoutUserDataAccessInterface;
 import use_case.signup.SignupUserDataAccessInterface;
 import use_case.add_ingredients.AddIngredientUserDataInterface;
 import use_case.ingredient_inventory.IngredientInventoryUserDataAccessInterface;
+import use_case.remove_ingredients.RemoveIngredientUserDataInterface;
 
 import java.io.*;
 import java.util.*;
@@ -24,7 +25,8 @@ public class FileUserDataAccessObject implements SignupUserDataAccessInterface,
                                                  ChangePasswordUserDataAccessInterface,
                                                  LogoutUserDataAccessInterface,
                                                  AddIngredientUserDataInterface,
-                                                 IngredientInventoryUserDataAccessInterface  {
+                                                 IngredientInventoryUserDataAccessInterface,
+                                                 RemoveIngredientUserDataInterface  {
 
     private static final String HEADER = "username,password,ingredients";
 
@@ -93,8 +95,17 @@ public class FileUserDataAccessObject implements SignupUserDataAccessInterface,
             writer.newLine();
 
             for (User user : accounts.values()) {
-                final String line = String.format("%s,%s",
-                        user.getName(), user.getPassword());
+                String ingredientsJoined = "";
+                if (user.getIngredient_inventory() != null && !user.getIngredient_inventory().isEmpty()) {
+                    ingredientsJoined = String.join(" ", user.getIngredient_inventory());
+                }
+                final String line;
+                if (ingredientsJoined.isEmpty()) {
+                    // Keep compatibility with reader that treats 2-column rows as no ingredients
+                    line = String.format("%s,%s", user.getName(), user.getPassword());
+                } else {
+                    line = String.format("%s,%s,%s", user.getName(), user.getPassword(), ingredientsJoined);
+                }
                 writer.write(line);
                 writer.newLine();
             }
@@ -148,6 +159,12 @@ public class FileUserDataAccessObject implements SignupUserDataAccessInterface,
 
     public List<String> getIngredients(String username){
         return accounts.get(username).getIngredient_inventory();
+    }
+
+    @Override
+    public void removeIngredient(User user) {
+        accounts.put(user.getName(), user);
+        save();
     }
 
 }
