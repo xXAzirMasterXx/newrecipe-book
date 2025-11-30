@@ -278,7 +278,7 @@ public class AppBuilder {
         RecipePresenter recipePresenter = new RecipePresenter(recipeViewModel);
 
         // 2. Create use cases
-        SearchRecipesUseCase searchRecipesUseCase = new SearchRecipesUseCase(recipeDataAccess, recipePresenter);
+        SearchRecipesUseCase searchRecipesUseCase = new SearchRecipesUseCase(recipeDataAccess);
         GetRandomRecipeUseCase getRandomRecipeUseCase = new GetRandomRecipeUseCase(recipeDataAccess, recipePresenter);
         GetAreasUseCase getAreasUseCase = new GetAreasUseCase(recipeDataAccess, recipePresenter);
         GetCategoriesUseCase getCategoriesUseCase = new GetCategoriesUseCase(recipeDataAccess, recipePresenter);

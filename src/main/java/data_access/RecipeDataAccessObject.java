@@ -49,7 +49,21 @@ public class RecipeDataAccessObject implements RecipeDataAccessInterface {
             String encodedCategory = URLEncoder.encode(category, StandardCharsets.UTF_8);
             String urlString = API_BASE_URL + "filter.php?c=" + encodedCategory;
             JSONObject response = makeApiCall(urlString);
-            return parseRecipesFromResponse(response);
+
+            // Step 1: get basic recipe objects with only IDs
+            JSONArray meals = response.optJSONArray("meals");
+            if (meals == null) return new ArrayList<>();
+
+            List<Recipe> fullRecipes = new ArrayList<>();
+
+            // Step 2: fetch full info per ID
+            for (int i = 0; i < meals.length(); i++) {
+                String id = meals.getJSONObject(i).getString("idMeal");
+                getRecipeById(id).ifPresent(fullRecipes::add);
+            }
+
+            return fullRecipes;
+
         } catch (Exception e) {
             System.err.println("Error getting recipes by category: " + e.getMessage());
             return new ArrayList<>();
@@ -62,12 +76,25 @@ public class RecipeDataAccessObject implements RecipeDataAccessInterface {
             String encodedArea = URLEncoder.encode(area, StandardCharsets.UTF_8);
             String urlString = API_BASE_URL + "filter.php?a=" + encodedArea;
             JSONObject response = makeApiCall(urlString);
-            return parseRecipesFromResponse(response);
+
+            JSONArray meals = response.optJSONArray("meals");
+            if (meals == null) return new ArrayList<>();
+
+            List<Recipe> fullRecipes = new ArrayList<>();
+
+            for (int i = 0; i < meals.length(); i++) {
+                String id = meals.getJSONObject(i).getString("idMeal");
+                getRecipeById(id).ifPresent(fullRecipes::add);
+            }
+
+            return fullRecipes;
+
         } catch (Exception e) {
             System.err.println("Error getting recipes by area: " + e.getMessage());
             return new ArrayList<>();
         }
     }
+
 
     @Override
     public List<String> getAllCategories() {
