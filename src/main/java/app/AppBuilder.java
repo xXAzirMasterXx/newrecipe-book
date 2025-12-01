@@ -110,7 +110,6 @@ public class AppBuilder {
     private LoggedInViewWithAddRecipe loggedInView;;
     private LoginView loginView;
     private IngredientInventoryViewModel ingredientInventoryViewModel;
-    private IngredientInventoryView ingredientInventoryView;
     private MyRecipesViewModel myRecipesViewModel;
     private MyRecipesController myRecipesController;
 
@@ -180,12 +179,6 @@ public class AppBuilder {
         loggedInView.setConvertUnitsController(convertUnitsController);
 
         cardPanel.add(loggedInView, loggedInView.getViewName());
-        return this;
-    }
-
-    public AppBuilder addIngredientInventoryView(){
-        ingredientInventoryViewModel = new IngredientInventoryViewModel();
-        ingredientInventoryView = new IngredientInventoryView(ingredientInventoryViewModel);
         return this;
     }
 
@@ -278,7 +271,7 @@ public class AppBuilder {
         RecipePresenter recipePresenter = new RecipePresenter(recipeViewModel);
 
         // 2. Create use cases
-        SearchRecipesUseCase searchRecipesUseCase = new SearchRecipesUseCase(recipeDataAccess, recipePresenter);
+        SearchRecipesUseCase searchRecipesUseCase = new SearchRecipesUseCase(recipeDataAccess);
         GetRandomRecipeUseCase getRandomRecipeUseCase = new GetRandomRecipeUseCase(recipeDataAccess, recipePresenter);
         GetAreasUseCase getAreasUseCase = new GetAreasUseCase(recipeDataAccess, recipePresenter);
         GetCategoriesUseCase getCategoriesUseCase = new GetCategoriesUseCase(recipeDataAccess, recipePresenter);
@@ -302,7 +295,7 @@ public class AppBuilder {
         AddRecipeOutputBoundary addRecipePresenter =
                 new AddRecipePresenter(addRecipeViewModel, viewManagerModel);
 
-        // ==== Interactor ====   —— 这里用字段 addRecipeDAO，而不是 new
+        // ==== Interactor ====
         AddRecipeInputBoundary addRecipeInteractor =
                 new AddRecipeInteractor(
                         addRecipeDAO,
@@ -336,19 +329,18 @@ public class AppBuilder {
         MyRecipesInputBoundary interactor =
                 new MyRecipesInteractor(addRecipeDAO, presenter);
 
-        // 4. Controller → 保存到字段（给 LoggedInView 使用）
+        // 4. Controller
         myRecipesController = new MyRecipesController(interactor);
 
-        // ★★ 关键：把 controller 传给 LoggedInViewWithAddRecipe
         if (loggedInView != null) {
             loggedInView.setMyRecipesController(myRecipesController);
         }
 
-        // 5. View（必须传 viewModel + viewManagerModel）
+        // 5. View
         MyRecipesView myRecipesView =
                 new MyRecipesView(myRecipesViewModel, viewManagerModel);
 
-        // 6. 注册到 CardLayout
+        // 6. CardLayout
         cardPanel.add(myRecipesView, myRecipesView.getViewName());
 
         return this;

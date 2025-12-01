@@ -1,4 +1,3 @@
-/*
 package use_case.signup;
 
 import data_access.InMemoryUserDataAccessObject;
@@ -106,4 +105,3 @@ class SignupInteractorTest {
         interactor.execute(inputData);
     }
 }
- */
