@@ -302,7 +302,7 @@ public class AppBuilder {
         AddRecipeOutputBoundary addRecipePresenter =
                 new AddRecipePresenter(addRecipeViewModel, viewManagerModel);
 
-        // ==== Interactor ====   —— 这里用字段 addRecipeDAO，而不是 new
+        // ==== Interactor ====
         AddRecipeInputBoundary addRecipeInteractor =
                 new AddRecipeInteractor(
                         addRecipeDAO,
@@ -336,19 +336,18 @@ public class AppBuilder {
         MyRecipesInputBoundary interactor =
                 new MyRecipesInteractor(addRecipeDAO, presenter);
 
-        // 4. Controller → 保存到字段（给 LoggedInView 使用）
+        // 4. Controller
         myRecipesController = new MyRecipesController(interactor);
 
-        // ★★ 关键：把 controller 传给 LoggedInViewWithAddRecipe
         if (loggedInView != null) {
             loggedInView.setMyRecipesController(myRecipesController);
         }
 
-        // 5. View（必须传 viewModel + viewManagerModel）
+        // 5. View
         MyRecipesView myRecipesView =
                 new MyRecipesView(myRecipesViewModel, viewManagerModel);
 
-        // 6. 注册到 CardLayout
+        // 6. CardLayout
         cardPanel.add(myRecipesView, myRecipesView.getViewName());
 
         return this;
