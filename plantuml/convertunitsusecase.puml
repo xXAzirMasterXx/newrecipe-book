@@ -1,0 +1,49 @@
+@startuml
+left to right direction
+
+package "use_case.convert_units" {
+
+    ' ----------- Row 1: Boundaries -----------
+    together {
+        interface ConvertUnitsInputBoundary
+        interface ConvertUnitsOutputBoundary
+    }
+
+    ' ----------- Row 2: Input/Output Data -----------
+    together {
+        class ConvertUnitsInputData
+        class ConvertUnitsOutputData
+    }
+
+    ' ----------- Interactor (center) -----------
+    class ConvertUnitsInteractor {
+        - measurementFactory: MeasurementFactory
+        - presenter: ConvertUnitsOutputBoundary
+        --
+        + ConvertUnitsInteractor(measurementFactory: MeasurementFactory,
+                                 presenter: ConvertUnitsOutputBoundary)
+        + execute(inputData: ConvertUnitsInputData): void
+        - convertSingleMeasure(rawMeasure: String): String
+        - parseValue(token: String): double
+        - normalizeUnit(unit: String): String
+        - isMetricUnit(unit: String): boolean
+        - isImperialUnit(unit: String): boolean
+    }
+}
+
+' ----------- RELATIONSHIPS -----------
+
+ConvertUnitsInputBoundary --> ConvertUnitsInputData : uses
+ConvertUnitsOutputBoundary --> ConvertUnitsOutputData : uses
+
+ConvertUnitsInputData --> MeasurementSystem : contains
+ConvertUnitsOutputData --> MeasurementSystem : contains
+
+ConvertUnitsInteractor ..|> ConvertUnitsInputBoundary
+ConvertUnitsInteractor --> ConvertUnitsOutputBoundary : uses
+ConvertUnitsInteractor --> ConvertUnitsInputData : uses
+ConvertUnitsInteractor --> ConvertUnitsOutputData : «creates»
+ConvertUnitsInteractor --> MeasurementSystem : uses
+ConvertUnitsInteractor --> MeasurementFactory : uses
+
+@enduml
