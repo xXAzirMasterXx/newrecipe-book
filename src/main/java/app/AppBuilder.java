@@ -71,6 +71,18 @@ import view.*;
 import javax.swing.*;
 import java.awt.*;
 
+import interface_adapter.convert_units.ConvertUnitsController;
+import interface_adapter.convert_units.ConvertUnitsPresenter;
+import interface_adapter.convert_units.ConvertUnitsViewModel;
+
+import use_case.convert_units.ConvertUnitsInputBoundary;
+import use_case.convert_units.ConvertUnitsInteractor;
+import use_case.convert_units.ConvertUnitsOutputBoundary;
+
+import entity.MeasurementFactory;
+import entity.Measurement;
+
+
 public class AppBuilder {
     private final JPanel cardPanel = new JPanel();
     private final CardLayout cardLayout = new CardLayout();
@@ -147,9 +159,30 @@ public class AppBuilder {
         );
         loggedInView.setAddIngredientController(addIngredientController);
         loggedInView.setRemoveIngredientController(removeIngredientController);
+
+        ConvertUnitsViewModel convertUnitsViewModel = new ConvertUnitsViewModel();
+
+        ConvertUnitsOutputBoundary convertUnitsPresenter =
+                new ConvertUnitsPresenter(convertUnitsViewModel);
+
+        MeasurementFactory measurementFactory =
+                (double value, String unit, entity.MeasurementSystem system) ->
+                        new Measurement(value, unit, system);
+
+        ConvertUnitsInputBoundary convertUnitsInteractor =
+                new ConvertUnitsInteractor(measurementFactory, convertUnitsPresenter);
+
+        ConvertUnitsController convertUnitsController =
+                new ConvertUnitsController(convertUnitsInteractor);
+
+        loggedInView.setConvertUnitsViewModel(convertUnitsViewModel);
+        loggedInView.setConvertUnitsController(convertUnitsController);
+
         cardPanel.add(loggedInView, loggedInView.getViewName());
         return this;
     }
+
+
 
 
     public AppBuilder addSignupUseCase() {
