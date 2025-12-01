@@ -5,6 +5,4 @@ import java.util.List;
 public interface IngredientInventoryInputBoundary {
 
     List<String> execute(IngredientInventoryInputData ingredientInventoryInputData);
-
-    void switchToLoggedinView();
 }

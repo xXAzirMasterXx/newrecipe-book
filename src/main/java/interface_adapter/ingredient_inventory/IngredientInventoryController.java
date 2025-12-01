@@ -8,14 +8,10 @@ import java.util.List;
 public class IngredientInventoryController {
 
     private final IngredientInventoryInputBoundary ingredientInventoryUsecaseInteractor;
-
     public IngredientInventoryController(IngredientInventoryInputBoundary ingredientInventoryUsecaseInteractor){
         this.ingredientInventoryUsecaseInteractor = ingredientInventoryUsecaseInteractor;
     }
 
-    public void switchToLoggedInView() {
-        ingredientInventoryUsecaseInteractor.switchToLoggedinView();
-    }
 
     public List<String> getIngredients(String username) {
         final IngredientInventoryInputData ingredientInventoryInputData = new IngredientInventoryInputData(username);
