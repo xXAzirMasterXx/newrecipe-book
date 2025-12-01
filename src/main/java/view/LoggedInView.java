@@ -46,7 +46,7 @@ public class LoggedInView extends JPanel implements ActionListener, PropertyChan
     private ChangePasswordController changePasswordController = null;
     private LogoutController logoutController;
     private RecipeController recipeController;
-    private JComboBox<String> categoryDropdown;
+    private final JComboBox<String> categoryDropdown;
     private JComboBox<String> areaDropdown;
     private ConvertUnitsController convertUnitsController;
     private ConvertUnitsViewModel convertUnitsViewModel;
@@ -54,7 +54,7 @@ public class LoggedInView extends JPanel implements ActionListener, PropertyChan
 
 
 
-    private IngredientInventoryController ingredientInventoryController;
+    private final IngredientInventoryController ingredientInventoryController;
     private AddIngredientController addIngredientController;
     private RemoveIngredientController removeIngredientController;
 

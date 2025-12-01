@@ -110,7 +110,6 @@ public class AppBuilder {
     private LoggedInViewWithAddRecipe loggedInView;;
     private LoginView loginView;
     private IngredientInventoryViewModel ingredientInventoryViewModel;
-    private IngredientInventoryView ingredientInventoryView;
     private MyRecipesViewModel myRecipesViewModel;
     private MyRecipesController myRecipesController;
 
@@ -180,12 +179,6 @@ public class AppBuilder {
         loggedInView.setConvertUnitsController(convertUnitsController);
 
         cardPanel.add(loggedInView, loggedInView.getViewName());
-        return this;
-    }
-
-    public AppBuilder addIngredientInventoryView(){
-        ingredientInventoryViewModel = new IngredientInventoryViewModel();
-        ingredientInventoryView = new IngredientInventoryView(ingredientInventoryViewModel);
         return this;
     }
 
