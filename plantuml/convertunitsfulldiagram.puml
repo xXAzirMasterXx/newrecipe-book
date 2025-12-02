@@ -1,0 +1,76 @@
+@startuml
+left to right direction
+
+' =========================
+' ENTITY LAYER
+' =========================
+package entity {
+    enum MeasurementSystem
+    class Measurement
+    interface MeasurementFactory
+}
+
+' =========================
+' USE CASE LAYER
+' =========================
+package "use_case.convert_units" {
+    interface ConvertUnitsInputBoundary
+    class ConvertUnitsInputData
+    interface ConvertUnitsOutputBoundary
+    class ConvertUnitsOutputData
+    class ConvertUnitsInteractor
+}
+
+' =========================
+' INTERFACE ADAPTER LAYER
+' =========================
+package "interface_adapter.convert_units" {
+    class ConvertUnitsController
+    class ConvertUnitsPresenter
+    class ConvertUnitsState
+    class ConvertUnitsViewModel
+}
+
+' =========================
+' VIEW LAYER
+' =========================
+package view {
+    class LoggedInView
+}
+
+' =========================
+' RELATIONSHIPS
+' =========================
+
+' ----- ENTITY LAYER -----
+Measurement --> MeasurementSystem
+MeasurementFactory --> Measurement
+MeasurementFactory --> MeasurementSystem
+
+' ----- USE CASE LAYER -----
+ConvertUnitsInputBoundary --> ConvertUnitsInputData
+ConvertUnitsOutputBoundary --> ConvertUnitsOutputData
+
+ConvertUnitsInteractor ..|> ConvertUnitsInputBoundary
+ConvertUnitsInteractor --> ConvertUnitsOutputBoundary
+ConvertUnitsInteractor --> ConvertUnitsInputData
+ConvertUnitsInteractor --> ConvertUnitsOutputData
+ConvertUnitsInteractor --> MeasurementFactory
+
+' ----- INTERFACE ADAPTER LAYER -----
+ConvertUnitsController --> ConvertUnitsInputBoundary
+ConvertUnitsController --> ConvertUnitsInputData
+
+' Presenter relationships
+ConvertUnitsPresenter ..|> ConvertUnitsOutputBoundary
+ConvertUnitsPresenter --> ConvertUnitsViewModel : updates
+ConvertUnitsPresenter --> ConvertUnitsState : modifies
+ConvertUnitsPresenter --> ConvertUnitsOutputData : reads
+
+ConvertUnitsViewModel --> ConvertUnitsState
+
+' ----- VIEW LAYER -----
+LoggedInView --> ConvertUnitsController
+LoggedInView --> ConvertUnitsViewModel
+
+@enduml

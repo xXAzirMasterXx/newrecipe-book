@@ -1,0 +1,33 @@
+@startuml
+
+package entity {
+
+    ' Enumeration for METRIC/IMPERIAL
+    enum MeasurementSystem {
+        METRIC
+        IMPERIAL
+    }
+
+    ' Measurement entity
+    class Measurement {
+        - value: double
+        - unit: String
+        - system: MeasurementSystem
+        --
+        + Measurement(value: double, unit: String, system: MeasurementSystem)
+        + toReadableString(): String
+        + toString(): String
+    }
+
+    ' Factory interface for creating Measurement instances
+    interface MeasurementFactory {
+        + create(value: double, unit: String, system: MeasurementSystem): Measurement
+    }
+}
+
+' Relationships
+Measurement --> MeasurementSystem : uses
+MeasurementFactory --> Measurement : «creates»
+MeasurementFactory --> MeasurementSystem : uses
+
+@enduml
