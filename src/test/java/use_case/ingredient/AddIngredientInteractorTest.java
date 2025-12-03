@@ -6,7 +6,9 @@ import org.junit.jupiter.api.Test;
 import use_case.add_ingredients.AddIngredientInputBoundary;
 import use_case.add_ingredients.AddIngredientInputData;
 import use_case.add_ingredients.AddIngredientInteractor;
+import use_case.add_ingredients.AddIngredientOutputData;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -58,4 +60,15 @@ class AddIngredientInteractorTest {
         assertEquals(before, resultNull);
         assertEquals(before, dao.getIngredients("Paul"));
     }
+
+    @Test
+    void returnsSameIngredientsListPassedInConstructor() {
+        List<String> ingredients = new ArrayList<String>();
+        ingredients.add("Eggs");
+        ingredients.add("Flour");
+        ingredients.add("Milk");
+        AddIngredientOutputData data = new AddIngredientOutputData(ingredients);
+        assertEquals(ingredients, data.getIngredients());
+    }
+
 }
