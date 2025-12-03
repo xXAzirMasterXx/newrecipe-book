@@ -353,7 +353,7 @@ class AddRecipeInteractorTest {
                 new InMemoryAddRecipeUserDataAccessObject();
         RecipeFactory factory = new RecipeFactory();
 
-        // 先存一个旧的
+
         Recipe existing = factory.create(
                 "id-1",
                 "Omelette",

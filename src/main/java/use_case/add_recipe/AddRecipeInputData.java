@@ -10,15 +10,8 @@ public class AddRecipeInputData {
     private final String youtubeUrl;
     private final String sourceUrl;
     private final String[] ingredients;
-
-    // original measures as given (e.g. from TheMealDB)
     private final String[] measures;
 
-    // NEW: normalized/converted measures
-    // - metric: g / mL
-    // - imperial: oz / lb / tbsp / tsp
-    private final String[] measuresMetric;
-    private final String[] measuresImperial;
 
     private final String cookingTime;
     private final boolean overwrite;   // 用户是否选择覆盖重名 recipe
@@ -45,10 +38,6 @@ public class AddRecipeInputData {
         this.measures = measures;
         this.cookingTime = cookingTime;
         this.overwrite = overwrite;
-
-        // auto-generate converted measures
-        this.measuresMetric = UnitConversionUtils.toMetric(measures);
-        this.measuresImperial = UnitConversionUtils.toImperial(measures);
     }
 
     public String getName() {
@@ -88,15 +77,6 @@ public class AddRecipeInputData {
         return measures;
     }
 
-    /** Measures converted to metric (g / mL) where possible. */
-    public String[] getMeasuresMetric() {
-        return measuresMetric;
-    }
-
-    /** Measures converted to imperial (oz / lb / tbsp / tsp) where possible. */
-    public String[] getMeasuresImperial() {
-        return measuresImperial;
-    }
 
     public String getCookingTime() {
         return cookingTime;
