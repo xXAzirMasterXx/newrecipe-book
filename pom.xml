@@ -43,7 +43,7 @@
                     <target>15</target>
                 </configuration>
             </plugin>
-            <!-- JaCoCo插件 -->
+            <!-- JaCoCoPlugin -->
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
