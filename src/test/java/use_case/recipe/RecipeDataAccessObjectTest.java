@@ -35,7 +35,7 @@ public class RecipeDataAccessObjectTest {
     void testGetRecipeById_ValidId_ReturnsRecipe() {
         Optional<Recipe> recipe = dataAccess.getRecipeById("52772"); // Known ID
         assertTrue(recipe.isPresent(), "Should find recipe with ID 52772");
-        assertEquals("Teriyaki Chicken", recipe.get().getName());
+        assertEquals("Teriyaki Chicken Casserole", recipe.get().getName());
     }
 
     @Test
