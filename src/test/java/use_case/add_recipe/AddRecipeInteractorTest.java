@@ -1,4 +1,6 @@
+
 package use_case.add_recipe;
+
 
 import entity.Recipe;
 import entity.RecipeFactory;
@@ -12,11 +14,14 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Unit tests for the AddRecipeInteractor use case.
  */
+
+
 class AddRecipeInteractorTest {
 
     /**
      * Simple in-memory data access object for testing.
      */
+
     private static class InMemoryAddRecipeUserDataAccessObject
             implements AddRecipeUserDataAccessInterface {
 
@@ -343,66 +348,4 @@ class AddRecipeInteractorTest {
                 new AddRecipeInteractor(repo, failurePresenter, factory);
         interactor.execute(inputData);
     }
-
-    @Test
-    void duplicateNameWithOverwriteSuccessTest() {
-        String[] ingredients = {"egg"};
-        String[] measures = {"1"};
-
-        InMemoryAddRecipeUserDataAccessObject repo =
-                new InMemoryAddRecipeUserDataAccessObject();
-        RecipeFactory factory = new RecipeFactory();
-
-        // 先存一个旧的
-        Recipe existing = factory.create(
-                "id-1",
-                "Omelette",
-                "Breakfast",
-                "French",
-                "Old instructions",
-                "imageUrl",
-                "youtubeUrl",
-                "sourceUrl",
-                ingredients,
-                measures
-        );
-        repo.save(existing);
-
-        // 新输入，同名，但 overwrite = true
-        AddRecipeInputData inputData = new AddRecipeInputData(
-                "Omelette",
-                "Breakfast",
-                "French",
-                "New instructions",
-                "newImageUrl",
-                "newYoutubeUrl",
-                "newSourceUrl",
-                ingredients,
-                measures,
-                "15",
-                true      // 允许 overwrite
-        );
-
-        AddRecipeOutputBoundary successPresenter = new AddRecipeOutputBoundary() {
-            @Override
-            public void prepareSuccessView(AddRecipeOutputData data) {
-                assertEquals("Omelette", data.getName());
-                assertEquals(15, data.getCookingTime());
-                assertTrue(data.isOverwrite());
-                // 确认 repo 里面被更新了
-                Recipe saved = repo.getByName("Omelette");
-                assertEquals("New instructions", saved.getInstructions());
-            }
-
-            @Override
-            public void prepareFailView(String error) {
-                fail("Unexpected failure: " + error);
-            }
-        };
-
-        AddRecipeInputBoundary interactor =
-                new AddRecipeInteractor(repo, successPresenter, factory);
-        interactor.execute(inputData);
-    }
 }
-

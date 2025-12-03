@@ -1,0 +1,61 @@
+@startuml
+left to right direction
+
+package "interface_adapter.convert_units" {
+
+    ' ----------- CONTROLLER -----------
+    class ConvertUnitsController {
+        - interactor
+        --
+        + execute(...)
+    }
+
+    ' ----------- PRESENTER -----------
+    class ConvertUnitsPresenter {
+        - viewModel
+        --
+        + prepareSuccessView(...)
+        + prepareFailView(...)
+    }
+
+    ' ----------- STATE -----------
+    class ConvertUnitsState {
+        - recipeId
+        - recipeName
+        - ingredients
+        - originalMeasures
+        - convertedMeasures
+        - targetSystem
+        - errorMessage
+        - success
+        --
+        + ConvertUnitsState()
+        + ConvertUnitsState(copy)
+    }
+
+    ' ----------- VIEWMODEL -----------
+    class ConvertUnitsViewModel {
+        - state
+        --
+        + resetState()
+    }
+}
+
+package view {
+    class LoggedInView {
+        - convertUnitsController
+        - convertUnitsViewModel
+        --
+        + showRecipeDetails(...)
+    }
+}
+
+' ----------- INTERNAL RELATIONSHIPS ONLY -----------
+
+ConvertUnitsPresenter --> ConvertUnitsViewModel : updates
+ConvertUnitsViewModel --> ConvertUnitsState : holds
+
+LoggedInView --> ConvertUnitsController : uses
+LoggedInView --> ConvertUnitsViewModel : reads
+
+@enduml

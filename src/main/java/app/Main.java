@@ -12,6 +12,7 @@ public class Main {
                 .addSignupUseCase()
                 .addLoginUseCase()
                 .addChangePasswordUseCase()
+                .addIngredientInventoryUseCase()
                 .addLogoutUseCase()
                 .addRecipeUseCase()
                 .addAddRecipeUseCase()

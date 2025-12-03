@@ -3,19 +3,14 @@ import java.util.List;
 
 public class IngredientInventoryInputData {
 
-    private final List<String> ingredients;
     private final String username;
 
-    public IngredientInventoryInputData(List<String> ingredients, String username){
-        this.ingredients = ingredients;
+    public IngredientInventoryInputData(String username){
         this.username = username;
     }
 
-    List<String> getIngredients(){
-        return ingredients;
+    public String getUsername() {
+        return this.username;
     }
 
-    String getUsername(){
-        return username;
-    }
 }

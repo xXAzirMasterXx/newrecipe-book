@@ -18,9 +18,14 @@ import data_access.FileUserDataAccessObject;
 import data_access.RecipeDataAccessObject;
 import entity.UserFactory;
 import interface_adapter.ViewManagerModel;
+import interface_adapter.ingredient_inventory.IngredientInventoryController;
+import interface_adapter.ingredient_inventory.IngredientInventoryPresenter;
+import interface_adapter.ingredient_inventory.IngredientInventoryViewModel;
 import interface_adapter.logged_in.ChangePasswordController;
 import interface_adapter.logged_in.ChangePasswordPresenter;
 import interface_adapter.logged_in.LoggedInViewModel;
+import interface_adapter.add_ingredients.AddIngredientController;
+import interface_adapter.remove_ingredients.RemoveIngredientController;
 import interface_adapter.login.LoginController;
 import interface_adapter.login.LoginPresenter;
 import interface_adapter.login.LoginViewModel;
@@ -32,9 +37,17 @@ import interface_adapter.signup.SignupPresenter;
 import interface_adapter.signup.SignupViewModel;
 import interface_adapter.recipe.RecipeViewModel;
 import interface_adapter.recipe.RecipeController;
+import interface_adapter.ingredient_inventory.IngredientInventoryState;
 import use_case.change_password.ChangePasswordInputBoundary;
 import use_case.change_password.ChangePasswordInteractor;
 import use_case.change_password.ChangePasswordOutputBoundary;
+import use_case.ingredient_inventory.IngredientInventoryInputBoundary;
+import use_case.ingredient_inventory.IngredientInventoryInteractor;
+import use_case.ingredient_inventory.IngredientInventoryOutputBoundary;
+import use_case.add_ingredients.AddIngredientInputBoundary;
+import use_case.add_ingredients.AddIngredientInteractor;
+import use_case.remove_ingredients.RemoveIngredientInputBoundary;
+import use_case.remove_ingredients.RemoveIngredientInteractor;
 import use_case.login.LoginInputBoundary;
 import use_case.login.LoginInteractor;
 import use_case.login.LoginOutputBoundary;
@@ -53,9 +66,22 @@ import view.LoginView;
 import view.SignupView;
 import view.ViewManager;
 import view.MyRecipesView;
+import view.*;
 
 import javax.swing.*;
 import java.awt.*;
+
+import interface_adapter.convert_units.ConvertUnitsController;
+import interface_adapter.convert_units.ConvertUnitsPresenter;
+import interface_adapter.convert_units.ConvertUnitsViewModel;
+
+import use_case.convert_units.ConvertUnitsInputBoundary;
+import use_case.convert_units.ConvertUnitsInteractor;
+import use_case.convert_units.ConvertUnitsOutputBoundary;
+
+import entity.MeasurementFactory;
+import entity.Measurement;
+
 
 public class AppBuilder {
     private final JPanel cardPanel = new JPanel();
@@ -83,10 +109,16 @@ public class AppBuilder {
     private LoggedInViewModel loggedInViewModel;
     private LoggedInViewWithAddRecipe loggedInView;;
     private LoginView loginView;
+    private IngredientInventoryViewModel ingredientInventoryViewModel;
     private MyRecipesViewModel myRecipesViewModel;
     private MyRecipesController myRecipesController;
 
     private RecipeController recipeController;
+    private IngredientInventoryController ingredientInventoryController;
+    private AddIngredientController addIngredientController;
+    private RemoveIngredientController removeIngredientController;
+
+    private IngredientInventoryState ingredientInventoryState;
 
     public AppBuilder() {
         cardPanel.setLayout(cardLayout);
@@ -108,21 +140,49 @@ public class AppBuilder {
 
     public AppBuilder addLoggedInView() {
         loggedInViewModel = new LoggedInViewModel();
+        ingredientInventoryState = new IngredientInventoryState();
 
         if (recipeController == null) {
             this.addRecipeUseCase();
         }
 
+        this.addIngredientInventoryUseCase();
+        this.addAddIngredientsUseCase();
+        this.addRemoveIngredientsUseCase();
         loggedInView = new LoggedInViewWithAddRecipe(
                 loggedInViewModel,
                 recipeViewModel,
                 recipeController,
-                viewManagerModel
+                viewManagerModel,
+                ingredientInventoryState,
+                ingredientInventoryController
         );
+        loggedInView.setAddIngredientController(addIngredientController);
+        loggedInView.setRemoveIngredientController(removeIngredientController);
+
+        ConvertUnitsViewModel convertUnitsViewModel = new ConvertUnitsViewModel();
+
+        ConvertUnitsOutputBoundary convertUnitsPresenter =
+                new ConvertUnitsPresenter(convertUnitsViewModel);
+
+        MeasurementFactory measurementFactory =
+                (double value, String unit, entity.MeasurementSystem system) ->
+                        new Measurement(value, unit, system);
+
+        ConvertUnitsInputBoundary convertUnitsInteractor =
+                new ConvertUnitsInteractor(measurementFactory, convertUnitsPresenter);
+
+        ConvertUnitsController convertUnitsController =
+                new ConvertUnitsController(convertUnitsInteractor);
+
+        loggedInView.setConvertUnitsViewModel(convertUnitsViewModel);
+        loggedInView.setConvertUnitsController(convertUnitsController);
 
         cardPanel.add(loggedInView, loggedInView.getViewName());
         return this;
     }
+
+
 
 
     public AppBuilder addSignupUseCase() {
@@ -149,13 +209,43 @@ public class AppBuilder {
 
     public AppBuilder addChangePasswordUseCase() {
         final ChangePasswordOutputBoundary changePasswordOutputBoundary = new ChangePasswordPresenter(viewManagerModel,
-                loggedInViewModel);
+                loggedInViewModel, new IngredientInventoryViewModel());
 
         final ChangePasswordInputBoundary changePasswordInteractor =
                 new ChangePasswordInteractor(userDataAccessObject, changePasswordOutputBoundary, userFactory);
 
         ChangePasswordController changePasswordController = new ChangePasswordController(changePasswordInteractor);
         loggedInView.setChangePasswordController(changePasswordController);
+        return this;
+    }
+
+    public AppBuilder addIngredientInventoryUseCase() {
+        // Ensure the view model exists before constructing the presenter
+
+        final IngredientInventoryOutputBoundary ingredientInventoryOutputBoundary =
+                new IngredientInventoryPresenter(ingredientInventoryViewModel, viewManagerModel, loggedInViewModel);
+
+        final IngredientInventoryInputBoundary ingredientInventoryInteractor =
+                new IngredientInventoryInteractor(userDataAccessObject, ingredientInventoryOutputBoundary);
+
+        // Store in the field so other methods can use it
+        this.ingredientInventoryController = new IngredientInventoryController(ingredientInventoryInteractor);
+        return this;
+    }
+
+    public AppBuilder addAddIngredientsUseCase() {
+        final AddIngredientInputBoundary addIngredientInputBoundary =
+                new AddIngredientInteractor(userDataAccessObject, userDataAccessObject, userFactory);
+
+        this.addIngredientController = new AddIngredientController(addIngredientInputBoundary);
+        return this;
+    }
+
+    public AppBuilder addRemoveIngredientsUseCase() {
+        final RemoveIngredientInputBoundary removeIngredientInputBoundary =
+                new RemoveIngredientInteractor(userDataAccessObject, userDataAccessObject, userFactory);
+
+        this.removeIngredientController = new RemoveIngredientController(removeIngredientInputBoundary);
         return this;
     }
 
@@ -181,7 +271,7 @@ public class AppBuilder {
         RecipePresenter recipePresenter = new RecipePresenter(recipeViewModel);
 
         // 2. Create use cases
-        SearchRecipesUseCase searchRecipesUseCase = new SearchRecipesUseCase(recipeDataAccess, recipePresenter);
+        SearchRecipesUseCase searchRecipesUseCase = new SearchRecipesUseCase(recipeDataAccess);
         GetRandomRecipeUseCase getRandomRecipeUseCase = new GetRandomRecipeUseCase(recipeDataAccess, recipePresenter);
         GetAreasUseCase getAreasUseCase = new GetAreasUseCase(recipeDataAccess, recipePresenter);
         GetCategoriesUseCase getCategoriesUseCase = new GetCategoriesUseCase(recipeDataAccess, recipePresenter);
