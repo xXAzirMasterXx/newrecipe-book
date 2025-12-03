@@ -95,10 +95,6 @@ public class ConvertUnitsInteractor implements ConvertUnitsInputBoundary {
         if (trimmed.contains(" ")) {
             // Case 1: "200 g", "1/2 cup"
             String[] parts = trimmed.split("\\s+", 2);
-            if (parts.length != 2) {
-                // e.g. "to taste", "1 bunch" → leave unchanged
-                return rawMeasure;
-            }
             valueToken = parts[0];
             unitToken = parts[1].trim();
         } else {
@@ -120,6 +116,7 @@ public class ConvertUnitsInteractor implements ConvertUnitsInputBoundary {
             unitToken = trimmed.substring(idx).trim();
         }
 
+
         double value;
         try {
             value = parseValue(valueToken);
@@ -140,7 +137,9 @@ public class ConvertUnitsInteractor implements ConvertUnitsInputBoundary {
 
         double newValue = value;
         String newUnit = normalizedUnit;
-        MeasurementSystem newSystem;
+        MeasurementSystem newSystem = isImperial
+                ? MeasurementSystem.METRIC
+                : MeasurementSystem.IMPERIAL;
 
         if (isImperial) {
             // IMPERIAL → METRIC
@@ -165,6 +164,7 @@ public class ConvertUnitsInteractor implements ConvertUnitsInputBoundary {
                     newUnit = "ml";
                     newSystem = MeasurementSystem.METRIC;
                     break;
+
                 case "tsp":
                     newValue = value * 5.0;     // ml
                     newUnit = "ml";
@@ -176,6 +176,7 @@ public class ConvertUnitsInteractor implements ConvertUnitsInputBoundary {
                     newUnit = "g";
                     newSystem = MeasurementSystem.METRIC;
                     break;
+
                 case "lb": {
                     double grams = value * 453.592;
                     if (grams >= 1000.0) {
@@ -188,9 +189,6 @@ public class ConvertUnitsInteractor implements ConvertUnitsInputBoundary {
                     newSystem = MeasurementSystem.METRIC;
                     break;
                 }
-                default:
-                    // Shouldn't happen if isImperialUnit() is correct
-                    return rawMeasure;
             }
         } else {
             // METRIC → IMPERIAL
@@ -200,26 +198,27 @@ public class ConvertUnitsInteractor implements ConvertUnitsInputBoundary {
                     newUnit = "cup";
                     newSystem = MeasurementSystem.IMPERIAL;
                     break;
+
                 case "ml":
                     newValue = value / 240.0;   // cups approx
                     newUnit = "cup";
                     newSystem = MeasurementSystem.IMPERIAL;
                     break;
+
                 case "g":
                     newValue = value / 28.35;   // oz approx
                     newUnit = "oz";
                     newSystem = MeasurementSystem.IMPERIAL;
                     break;
+
                 case "kg":
                     newValue = value * 2.20462; // lb
                     newUnit = "lb";
                     newSystem = MeasurementSystem.IMPERIAL;
                     break;
-                default:
-                    // Unknown metric unit (e.g. "l") → leave unchanged
-                    return rawMeasure;
             }
         }
+
 
         // NEW: uniform rounding to 1 decimal place for all units
         newValue = Math.round(newValue * 10.0) / 10.0;
